@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+coverage
+.nx/cache
+tmp
+.idea
+/.nx/
+/.vscode/
+
+vite.config.*.timestamp*
