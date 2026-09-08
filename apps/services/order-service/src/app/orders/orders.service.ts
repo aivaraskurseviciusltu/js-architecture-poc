@@ -3,13 +3,19 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { OrderSchema, OrderDocument } from './order.schema';
 import { CreateOrderDto } from './create-order.dto';
-import { Order } from '@poc/shared-types';
+import { Order, OrderCreatedEvent } from '@poc/shared-types';
+import { EventPublisher } from '@poc/messaging';
 
 @Injectable()
 export class OrdersService {
+  private readonly publisher: EventPublisher;
+
   constructor(
     @InjectModel(OrderSchema.name) private readonly orderModel: Model<OrderDocument>,
-  ) {}
+  ) {
+    const topicArn = process.env['SNS_ORDER_EVENTS_ARN'] ?? '';
+    this.publisher = new EventPublisher(topicArn);
+  }
 
   async create(dto: CreateOrderDto): Promise<Order> {
     const totalAmount = dto.items.reduce(
@@ -17,7 +23,19 @@ export class OrdersService {
       0,
     );
     const created = await this.orderModel.create({ ...dto, totalAmount });
-    return this.toOrder(created);
+    const order = this.toOrder(created);
+
+    // Publish after successful write
+    const event: OrderCreatedEvent = {
+      orderId: order.id,
+      customerId: order.customerId,
+      items: order.items,
+      totalAmount: order.totalAmount,
+      timestamp: new Date().toISOString(),
+    };
+    await this.publisher.publish<OrderCreatedEvent>('OrderCreated', event);
+
+    return order;
   }
 
   async findById(id: string): Promise<Order> {

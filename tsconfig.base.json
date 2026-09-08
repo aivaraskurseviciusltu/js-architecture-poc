@@ -25,6 +25,12 @@
       ],
       "@js-fullstack-arch-poc/shared-types": [
         "./libs/shared-types/src/index.ts"
+      ],
+      "@js-fullstack-arch-poc/messaging": [
+        "./libs/messaging/src/index.ts"
+      ],
+      "@poc/messaging": [
+        "libs/messaging/src/index.ts"
       ]
     }
   }

@@ -23,6 +23,7 @@ export interface CreateOrderDto {
 export interface OrderCreatedEvent {
   orderId: string;
   customerId: string;
+  items: OrderItem[];
   totalAmount: number;
-  createdAt: string;
+  timestamp: string;
 }

@@ -1,6 +1,23 @@
 # JS Fullstack Architecture PoC
 
-An Nx monorepo demonstrating a fullstack architecture with a React frontend, NestJS BFF, NestJS microservice, and MongoDB.
+An Nx monorepo demonstrating a fullstack architecture with event-driven microservices.
+
+## Architecture
+
+```
+Browser → Frontend (React/Vite)
+                ↓
+           BFF (NestJS)
+                ↓
+        Order Service (NestJS/Mongo)
+                ↓ SNS publish
+         [order-events topic]
+           /              \
+  inventory-queue    notification-queue
+        ↓                    ↓
+ Inventory Service   Notification Service
+  (NestJS/Mongo)       (NestJS/Mongo)
+```
 
 ## Stack
 
@@ -9,69 +26,109 @@ An Nx monorepo demonstrating a fullstack architecture with a React frontend, Nes
 | Frontend | React + Vite + TypeScript |
 | BFF | NestJS + TypeScript |
 | Order Service | NestJS + TypeScript + Mongoose |
-| Database | MongoDB 7 |
-| Monorepo | Nx (integrated, npm) |
+| Inventory Service | NestJS + TypeScript + Mongoose |
+| Notification Service | NestJS + TypeScript + Mongoose |
+| Message Bus | AWS SNS → SQS (via LocalStack) |
+| Database | MongoDB 7 (separate DB per service) |
+| Monorepo | Nx 23 (integrated, npm) |
 
-## Structure
+## Monorepo Structure
 
 ```
 apps/
-  frontend/           React + Vite app
-  bff/                NestJS BFF (aggregation gateway)
+  frontend/                React + Vite SPA
+  bff/                     NestJS aggregation gateway
   services/
-    order-service/    NestJS microservice (persists to MongoDB)
+    order-service/         Creates orders, publishes OrderCreated to SNS
+    inventory-service/     Consumes inventory-queue, decrements stock
+    notification-service/  Consumes notification-queue, records notifications
 libs/
-  shared-types/       Shared TS types & DTOs
+  shared-types/            Shared TS interfaces (Order, OrderCreatedEvent…)
+  messaging/               EventPublisher (SNS) + SqsConsumer (polling, backoff, idempotency)
+localstack/
+  init/
+    01-create-resources.sh  Auto-creates SNS/SQS resources on LocalStack start
 ```
 
 ## Quick Start (Docker)
 
 ```bash
-# 1. Copy and edit env
+# 1. Copy env file
 cp .env.example .env
 
-# 2. Start everything
+# 2. Build and start everything
 docker compose up --build
 
-# Frontend:       http://localhost:3002
-# BFF:            http://localhost:3000
-# Order Service:  http://localhost:3001
-# MongoDB:        localhost:27017
+# Endpoints:
+#   Frontend:              http://localhost:4200
+#   BFF:                   http://localhost:3000
+#   Order Service:         http://localhost:3001
+#   Inventory Service:     http://localhost:3002
+#   Notification Service:  http://localhost:3003
+#   LocalStack:            http://localhost:4566
+#   MongoDB:               localhost:27017
 ```
 
 ## Local Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Serve all apps concurrently (requires MongoDB running locally)
+# Start all services (requires local MongoDB + LocalStack)
 nx run-many -t serve
 
-# Build all projects
+# Build all
 nx run-many -t build
 ```
 
 ## API Reference
 
 ### BFF (`http://localhost:3000`)
-
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/orders` | Create an order |
+| `POST` | `/api/orders` | Create order → triggers event pipeline |
 | `GET` | `/api/orders/:id` | Get order by ID |
 | `GET` | `/health` | Health check |
-| `GET` | `/ready` | Readiness (checks order-service) |
+| `GET` | `/ready` | Readiness check |
 
 ### Order Service (`http://localhost:3001`)
-
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/orders` | Create an order |
-| `GET` | `/orders/:id` | Get order by ID |
-| `GET` | `/health` | Health check |
-| `GET` | `/ready` | Readiness (checks MongoDB) |
+| `POST` | `/orders` | Create order + publish SNS event |
+| `GET` | `/orders/:id` | Get order |
+| `GET` | `/health` | Health |
+| `GET` | `/ready` | Readiness (MongoDB ping) |
+
+### Inventory Service (`http://localhost:3002`)
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/inventory/:productId` | Get current stock level |
+| `GET` | `/health` | Health |
+| `GET` | `/ready` | Readiness (MongoDB ping) |
+
+### Notification Service (`http://localhost:3003`)
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/notifications` | List recorded notifications |
+| `GET` | `/health` | Health |
+| `GET` | `/ready` | Readiness (MongoDB ping) |
+
+## Event Flow
+
+1. `POST /api/orders` → BFF → Order Service persists to `orders` DB.
+2. Order Service publishes `OrderCreated` event to SNS topic `order-events`.
+3. SNS fans out to `inventory-queue` and `notification-queue`.
+4. **Inventory Service** polls `inventory-queue`, decrements stock (`$inc`) atomically.
+5. **Notification Service** polls `notification-queue`, records a notification document.
+6. Both consumers use a `processed_events` collection with a unique index on `messageId` to prevent duplicate processing (idempotency).
+7. Messages that fail after 3 attempts are routed to DLQs (`inventory-dlq`, `notification-dlq`) via SQS redrive policy.
+
+## Database Strategy
+
+One MongoDB instance; each service uses a **separate database name**:
+- `orders` — Order Service
+- `inventory` — Inventory Service
+- `notifications` — Notification Service
 
 ## Environment Variables
 
-See [`.env.example`](.env.example) for all required variables. **Never commit `.env`.**
+See [`.env.example`](.env.example) for all variables. **Never commit `.env`.**

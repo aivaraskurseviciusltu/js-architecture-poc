@@ -1,13 +1,32 @@
 services:
+  # ── Infrastructure ─────────────────────────────────────────────────────────
+  localstack:
+    image: localstack/localstack:3
+    restart: unless-stopped
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: sns,sqs
+      DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-}
+    volumes:
+      - ./localstack/init:/etc/localstack/init/ready.d
+      - localstack_data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "bash", "-c", "curl -sf http://localhost:4566/_localstack/health | grep -q '\"sns\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   mongodb:
     image: mongo:7
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-rootpassword}
-      MONGO_INITDB_DATABASE: ${MONGODB_DB:-orders}
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -17,6 +36,7 @@ services:
       retries: 5
       start_period: 20s
 
+  # ── Application services ───────────────────────────────────────────────────
   order-service:
     build:
       context: .
@@ -25,11 +45,62 @@ services:
     environment:
       PORT: 3001
       MONGODB_URI: mongodb://${MONGO_ROOT_USER:-root}:${MONGO_ROOT_PASSWORD:-rootpassword}@mongodb:27017
-      MONGODB_DB: ${MONGODB_DB:-orders}
+      MONGODB_DB: orders
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      SNS_ORDER_EVENTS_ARN: arn:aws:sns:${AWS_DEFAULT_REGION:-us-east-1}:000000000000:order-events
     ports:
       - "3001:3001"
     depends_on:
       mongodb:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+
+  inventory-service:
+    build:
+      context: .
+      dockerfile: apps/services/inventory-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 3002
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER:-root}:${MONGO_ROOT_PASSWORD:-rootpassword}@mongodb:27017
+      MONGODB_DB: inventory
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      SQS_INVENTORY_QUEUE_URL: http://localstack:4566/000000000000/inventory-queue
+    ports:
+      - "3002:3002"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: apps/services/notification-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 3003
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER:-root}:${MONGO_ROOT_PASSWORD:-rootpassword}@mongodb:27017
+      MONGODB_DB: notifications
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      SQS_NOTIFICATION_QUEUE_URL: http://localstack:4566/000000000000/notification-queue
+    ports:
+      - "3003:3003"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
 
   bff:
@@ -53,9 +124,10 @@ services:
         VITE_BFF_URL: ${VITE_BFF_URL:-http://localhost:3000}
     restart: unless-stopped
     ports:
-      - "3002:80"
+      - "4200:80"
     depends_on:
       - bff
 
 volumes:
   mongo_data:
+  localstack_data:
