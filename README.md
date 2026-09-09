@@ -132,3 +132,105 @@ One MongoDB instance; each service uses a **separate database name**:
 ## Environment Variables
 
 See [`.env.example`](.env.example) for all variables. **Never commit `.env`.**
+
+## Kubernetes (Local — k3d)
+
+### Prerequisites
+
+```bash
+brew install k3d kubectl helm
+```
+
+### 1 — Create the cluster
+
+```bash
+bash scripts/create-cluster.sh
+# Provisions k3d cluster 'poc' with 2 agents, NGINX ingress on :8080, and metrics-server
+```
+
+### 2 — Build images and load into cluster
+
+```bash
+bash scripts/build-and-load.sh
+# Builds all 5 Docker images tagged :local and imports them via k3d image import
+```
+
+### 3 — Deploy
+
+```bash
+bash scripts/deploy-local.sh
+# Generates self-signed TLS, applies k8s/overlays/local, waits for rollouts
+```
+
+**App is live at `http://localhost:8080`**
+
+### Useful commands
+
+```bash
+# All pods
+kubectl get pods -n poc
+
+# Watch HPA
+kubectl get hpa -n poc -w
+
+# Resource usage (requires metrics-server)
+kubectl top pods -n poc
+
+# Tail a service log
+kubectl logs -n poc -l app=order-service -f
+
+# Restart a deployment (simulates pod failure)
+kubectl rollout restart deployment/order-service -n poc
+```
+
+### Trigger HPA scale-up (load test)
+
+```bash
+# Install hey: brew install hey
+hey -z 60s -c 50 http://localhost:8080/api/orders
+# Watch HPA react:
+kubectl get hpa -n poc -w
+```
+
+### Cluster lifecycle
+
+```bash
+# Stop cluster (keeps state)
+k3d cluster stop poc
+
+# Start again
+k3d cluster start poc
+
+# Delete completely
+k3d cluster delete poc
+```
+
+### k8s Directory Structure
+
+```
+k8s/
+├── base/
+│   ├── namespace.yaml
+│   ├── ingress.yaml
+│   ├── network-policies.yaml
+│   ├── mongodb/         (StatefulSet + headless Service + Secret)
+│   ├── localstack/      (Deployment + Service + ConfigMap init script)
+│   ├── order-service/   (Deployment + Service + ConfigMap + HPA)
+│   ├── bff/             (Deployment + Service + ConfigMap + HPA)
+│   ├── inventory-service/
+│   ├── notification-service/
+│   ├── frontend/
+│   └── kustomization.yaml
+└── overlays/
+    ├── local/   ← used by deploy-local.sh (images :local, IfNotPresent)
+    └── prod/    ← placeholder for ECR + external MongoDB Atlas + real TLS
+```
+
+### Production overlay notes
+
+`k8s/overlays/prod/kustomization.yaml` is a documented placeholder. Before applying to prod:
+1. Replace ECR image URIs.
+2. Replace `mongodb-secret` with connection string to MongoDB Atlas or DocumentDB.
+3. Remove LocalStack; point SNS/SQS ARNs to real AWS resources.
+4. Install cert-manager and issue a real TLS certificate.
+

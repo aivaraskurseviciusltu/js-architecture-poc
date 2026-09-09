@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: localstack-init
+  namespace: poc
+data:
+  01-create-resources.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+    REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+    ACCOUNT_ID="000000000000"
+
+    echo "==> Creating SNS topic: order-events"
+    SNS_ARN=$(awslocal sns create-topic --name order-events --query TopicArn --output text)
+
+    echo "==> Creating DLQs"
+    awslocal sqs create-queue --queue-name inventory-dlq \
+      --attributes '{"MessageRetentionPeriod":"1209600"}' > /dev/null
+    awslocal sqs create-queue --queue-name notification-dlq \
+      --attributes '{"MessageRetentionPeriod":"1209600"}' > /dev/null
+
+    INV_DLQ_ARN="arn:aws:sqs:${REGION}:${ACCOUNT_ID}:inventory-dlq"
+    NOTIF_DLQ_ARN="arn:aws:sqs:${REGION}:${ACCOUNT_ID}:notification-dlq"
+
+    echo "==> Creating main queues"
+    awslocal sqs create-queue --queue-name inventory-queue \
+      --attributes "{\"RedrivePolicy\":\"{\\\"deadLetterTargetArn\\\":\\\"${INV_DLQ_ARN}\\\",\\\"maxReceiveCount\\\":\\\"3\\\"}\",\"VisibilityTimeout\":\"30\"}" > /dev/null
+    awslocal sqs create-queue --queue-name notification-queue \
+      --attributes "{\"RedrivePolicy\":\"{\\\"deadLetterTargetArn\\\":\\\"${NOTIF_DLQ_ARN}\\\",\\\"maxReceiveCount\\\":\\\"3\\\"}\",\"VisibilityTimeout\":\"30\"}" > /dev/null
+
+    INV_QUEUE_ARN="arn:aws:sqs:${REGION}:${ACCOUNT_ID}:inventory-queue"
+    NOTIF_QUEUE_ARN="arn:aws:sqs:${REGION}:${ACCOUNT_ID}:notification-queue"
+
+    echo "==> Subscribing queues to SNS"
+    awslocal sns subscribe --topic-arn "$SNS_ARN" --protocol sqs \
+      --notification-endpoint "$INV_QUEUE_ARN" \
+      --attributes '{"RawMessageDelivery":"true"}' > /dev/null
+    awslocal sns subscribe --topic-arn "$SNS_ARN" --protocol sqs \
+      --notification-endpoint "$NOTIF_QUEUE_ARN" \
+      --attributes '{"RawMessageDelivery":"true"}' > /dev/null
+
+    echo "==> LocalStack resources ready"

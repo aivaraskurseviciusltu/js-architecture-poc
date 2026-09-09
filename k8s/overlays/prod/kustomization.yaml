@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# NOTE: This overlay is a documented placeholder for a production deployment.
+# Before applying, you must:
+#   1. Replace <AWS_ACCOUNT_ID> and <AWS_REGION> with real values.
+#   2. Create a real mongodb-secret pointing to MongoDB Atlas / DocumentDB.
+#   3. Update SNS/SQS ARNs to point to real AWS resources (remove LocalStack).
+#   4. Install cert-manager and issue a real TLS certificate.
+#   5. Configure imagePullSecrets for ECR authentication.
+
+resources:
+  - ../../base
+
+# Replace LocalStack with real AWS — remove localstack Deployment/Service/ConfigMap
+# by patching replicas to 0 (full removal requires strategic merge or component exclusion)
+patches:
+  - target:
+      kind: Deployment
+      name: localstack
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 0
+
+# Point all app images to ECR
+# Replace these with actual ECR URIs before deploying
+images:
+  - name: order-service
+    newName: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/order-service
+    newTag: latest
+  - name: bff
+    newName: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/bff
+    newTag: latest
+  - name: inventory-service
+    newName: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/inventory-service
+    newTag: latest
+  - name: notification-service
+    newName: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/notification-service
+    newTag: latest
+  - name: frontend
+    newName: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/frontend
+    newTag: latest

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bff-config
+  namespace: poc
+data:
+  PORT: "3000"
+  ORDER_SERVICE_URL: http://order-service:3001

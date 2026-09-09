@@ -1,0 +1,38 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: poc
+
+resources:
+  - namespace.yaml
+  - ingress.yaml
+  - network-policies.yaml
+  # MongoDB
+  - mongodb/secret.yaml
+  - mongodb/service.yaml
+  - mongodb/statefulset.yaml
+  # LocalStack
+  - localstack/configmap.yaml
+  - localstack/service.yaml
+  - localstack/deployment.yaml
+  # Order Service
+  - order-service/configmap.yaml
+  - order-service/service.yaml
+  - order-service/deployment.yaml
+  - order-service/hpa.yaml
+  # BFF
+  - bff/configmap.yaml
+  - bff/service.yaml
+  - bff/deployment.yaml
+  - bff/hpa.yaml
+  # Inventory Service
+  - inventory-service/configmap.yaml
+  - inventory-service/service.yaml
+  - inventory-service/deployment.yaml
+  # Notification Service
+  - notification-service/configmap.yaml
+  - notification-service/service.yaml
+  - notification-service/deployment.yaml
+  # Frontend
+  - frontend/service.yaml
+  - frontend/deployment.yaml
