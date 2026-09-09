@@ -234,3 +234,81 @@ k8s/
 3. Remove LocalStack; point SNS/SQS ARNs to real AWS resources.
 4. Install cert-manager and issue a real TLS certificate.
 
+
+## Infrastructure as Code (Terraform)
+
+Terraform lives under [`infra/terraform/`](infra/terraform/) and targets full AWS deployment.
+
+### Prerequisites
+
+```bash
+brew install hashicorp/tap/terraform tflint
+# tfsec binary installed separately — see scripts/create-cluster.sh
+```
+
+### Directory structure
+
+```
+infra/terraform/
+├── providers.tf          # AWS provider + LocalStack overrides
+├── backend.tf            # S3/DynamoDB backend (commented — enable for prod)
+├── variables.tf          # All input variables
+├── outputs.tf            # Key resource outputs
+├── main.tf               # Module wiring
+├── environments/
+│   ├── local/terraform.tfvars   # LocalStack target
+│   └── prod/terraform.tfvars    # AWS prod (no secrets committed)
+└── modules/
+    ├── network/      VPC, 3 public + 3 private subnets, IGW, NAT, Flow Logs
+    ├── eks/          EKS cluster, managed node group, IRSA OIDC, KMS secrets encryption
+    ├── mongodb/      Amazon DocumentDB, Secrets Manager, Security Group
+    ├── elasticache/  Redis replication group, TLS, private subnet
+    ├── messaging/    SNS topic, SQS queues + DLQs, KMS encryption, subscriptions
+    ├── iam/          IRSA roles with least-privilege policies per service
+    └── ecr/          ECR repos with scan-on-push + lifecycle policies
+```
+
+### Local-to-cloud mapping
+
+| Local (docker-compose / k3d) | AWS (Terraform) |
+|---|---|
+| MongoDB container / StatefulSet | Amazon DocumentDB (`modules/mongodb`) |
+| LocalStack SNS topic `order-events` | AWS SNS topic (`modules/messaging`) |
+| LocalStack SQS `inventory-queue` | AWS SQS queue (`modules/messaging`) |
+| LocalStack SQS `notification-queue` | AWS SQS queue (`modules/messaging`) |
+| Docker credentials in `.env` | AWS Secrets Manager via IRSA (`modules/iam`) |
+| k3d cluster | Amazon EKS (`modules/eks`) |
+| `docker build` + `k3d image import` | ECR push + EKS node pull (`modules/ecr`) |
+| NGINX ingress on localhost:8080 | AWS Load Balancer Controller + ACM TLS |
+
+### Commands
+
+```bash
+cd infra/terraform
+
+# Initialise
+terraform init
+
+# Validate (no credentials needed)
+terraform validate
+terraform fmt -recursive -check
+
+# Lint
+tflint --recursive
+
+# Security scan
+tfsec .
+
+# Plan against LocalStack (start LocalStack first: docker compose up localstack)
+terraform plan -var-file=environments/local/terraform.tfvars \
+  -target=module.messaging -target=module.ecr
+
+# Plan against prod (requires AWS credentials + TF_VAR_docdb_master_password)
+export TF_VAR_docdb_master_password="<secret>"
+terraform plan -var-file=environments/prod/terraform.tfvars
+```
+
+### MongoDB decision
+
+See [`infra/docs/ADR-001-mongodb-choice.md`](infra/docs/ADR-001-mongodb-choice.md) for the DocumentDB vs Atlas decision record.
+

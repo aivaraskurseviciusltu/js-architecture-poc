@@ -1,11 +1,40 @@
+# ── Node ──────────────────────────────────────────────────────────────────────
 node_modules
 dist
-.env
 coverage
-.nx/cache
 tmp
-.idea
-/.nx/
-/.vscode/
 
+# ── Environment / secrets ─────────────────────────────────────────────────────
+.env
+*.local
+
+# ── Nx ────────────────────────────────────────────────────────────────────────
+.nx/cache
+.nx/workspace-data
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.idea
+.vscode
 vite.config.*.timestamp*
+
+# ── Terraform ─────────────────────────────────────────────────────────────────
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+terraform.tfvars.local
+.terraformrc
+terraform.rc
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+*.tar
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
