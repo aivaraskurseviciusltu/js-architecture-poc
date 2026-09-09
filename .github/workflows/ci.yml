@@ -203,6 +203,7 @@ jobs:
           format: table
           severity: HIGH,CRITICAL
           exit-code: '1'
+          trivyignores: .trivyignore
 
       # Trivy SBOM generation (separate pass — never blocks the build)
       - name: Generate SBOM (order-service)

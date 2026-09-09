@@ -1,0 +1,15 @@
+# .trivyignore
+# Vulnerabilities in npm's own bundled dependencies (/usr/local/lib/node_modules/npm/).
+# These packages are part of the npm CLI tool itself and are NOT in our application's
+# node_modules. The npm CLI is never executed at runtime (only during image build).
+# These are accepted risks until the upstream npm project ships patched bundled versions.
+
+# brace-expansion in npm internals
+CVE-2026-14257
+CVE-2026-69152
+
+# ip-address in npm internals
+CVE-2026-69192
+
+# tar in npm internals
+CVE-2026-73566
