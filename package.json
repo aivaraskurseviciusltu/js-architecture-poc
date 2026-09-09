@@ -8,7 +8,10 @@
     "node": ">=24"
   },
   "overrides": {
-    "multer": "2.3.0"
+    "multer": "2.3.0",
+    "brace-expansion": "5.0.9",
+    "ip-address": "10.7.0",
+    "tar": "7.5.22"
   },
   "devDependencies": {
     "@nestjs/schematics": "^11.0.0",

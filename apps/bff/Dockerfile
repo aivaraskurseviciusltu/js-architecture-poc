@@ -14,6 +14,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+RUN apk upgrade --no-cache
+
 # Create non-root user/group
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 

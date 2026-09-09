@@ -14,6 +14,10 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Upgrade Alpine packages to pick up any OS-level security patches
+# (e.g. libcrypto/libssl) that post-date the base image release.
+RUN apk upgrade --no-cache
+
 # Create non-root user/group
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
