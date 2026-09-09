@@ -7,8 +7,18 @@ resources:
   - namespace.yaml
   - ingress.yaml
   - network-policies.yaml
+  # Sealed Secrets — replaces plaintext mongodb/secret.yaml
+  # Before first deploy: install the sealed-secrets controller and run kubeseal
+  # See k8s/base/sealed-secrets/mongodb-sealed-secret.yaml for instructions
+  - sealed-secrets/mongodb-sealed-secret.yaml
+  # RBAC — ServiceAccounts, Roles, RoleBindings per service
+  - rbac/service-accounts.yaml
+  - rbac/roles.yaml
+  - rbac/role-bindings.yaml
+  # cert-manager — ClusterIssuer (local self-signed) + TLS certificate
+  # Requires cert-manager to be installed first (see cluster-issuer.yaml comments)
+  - cert-manager/cluster-issuer.yaml
   # MongoDB
-  - mongodb/secret.yaml
   - mongodb/service.yaml
   - mongodb/statefulset.yaml
   # LocalStack

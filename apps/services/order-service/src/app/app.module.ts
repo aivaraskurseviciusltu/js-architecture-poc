@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { OrdersModule } from './orders/orders.module';
 import { HealthModule } from './health/health.module';
+import { MongoSanitizeMiddleware } from './middleware/mongo-sanitize.middleware';
 
 @Module({
   imports: [
@@ -19,4 +20,9 @@ import { HealthModule } from './health/health.module';
     HealthModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    // Apply NoSQL sanitize middleware to all routes
+    consumer.apply(MongoSanitizeMiddleware).forRoutes('*');
+  }
+}

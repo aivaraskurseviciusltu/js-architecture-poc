@@ -1,0 +1,67 @@
+# cert-manager ClusterIssuer for local self-signed certificates.
+#
+# Install cert-manager first:
+#   kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.3/cert-manager.yaml
+#   kubectl wait --for=condition=Available deployment --all -n cert-manager --timeout=120s
+#
+# For production (Let's Encrypt), replace with:
+#   acme:
+#     server: https://acme-v02.api.letsencrypt.org/directory
+#     email: ops@example.com
+#     privateKeySecretRef: { name: letsencrypt-prod }
+#     solvers: [{ http01: { ingress: { class: nginx } } }]
+#
+# For AWS ALB + ACM: TLS is terminated at the ALB; cert-manager is not required.
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+# Root CA Certificate (needed to sign the leaf cert below)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: poc-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: poc-local-ca
+  secretName: poc-ca-secret
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# ClusterIssuer backed by the local CA (used by the Ingress)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: poc-ca-issuer
+spec:
+  ca:
+    secretName: poc-ca-secret
+---
+# TLS certificate for the local ingress host
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: poc-tls
+  namespace: poc
+spec:
+  secretName: poc-tls-secret
+  duration: 8760h   # 1 year
+  renewBefore: 720h # 30 days
+  commonName: localhost
+  dnsNames:
+    - localhost
+    - "*.poc.svc.cluster.local"
+  issuerRef:
+    name: poc-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io

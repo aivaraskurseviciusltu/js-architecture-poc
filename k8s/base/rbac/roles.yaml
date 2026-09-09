@@ -1,0 +1,48 @@
+---
+# Minimal Role for order-service: read its own ConfigMap and Secret
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: order-service
+  namespace: poc
+rules:
+  - apiGroups: [""]
+    resources: [configmaps, secrets]
+    resourceNames: [order-service-config, mongodb-secret]
+    verbs: [get]
+---
+# Minimal Role for bff: read its own ConfigMap
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bff
+  namespace: poc
+rules:
+  - apiGroups: [""]
+    resources: [configmaps]
+    resourceNames: [bff-config]
+    verbs: [get]
+---
+# Minimal Role for inventory-service: read its ConfigMap and Secret
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: inventory-service
+  namespace: poc
+rules:
+  - apiGroups: [""]
+    resources: [configmaps, secrets]
+    resourceNames: [inventory-service-config, mongodb-secret]
+    verbs: [get]
+---
+# Minimal Role for notification-service: read its ConfigMap and Secret
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: notification-service
+  namespace: poc
+rules:
+  - apiGroups: [""]
+    resources: [configmaps, secrets]
+    resourceNames: [notification-service-config, mongodb-secret]
+    verbs: [get]

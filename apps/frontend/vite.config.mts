@@ -6,6 +6,8 @@ import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin';
 
 export default defineConfig(() => ({
   root: import.meta.dirname,
+  // Load .env from workspace root so VITE_BFF_URL is picked up during nx serve
+  envDir: '../../',
   cacheDir: '../../node_modules/.vite/apps/frontend',
   server:{
     port: 4200,

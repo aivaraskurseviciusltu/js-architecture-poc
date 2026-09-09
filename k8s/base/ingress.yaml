@@ -6,10 +6,20 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    # Force HTTPS redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # cert-manager will provision the TLS certificate
+    cert-manager.io/cluster-issuer: poc-ca-issuer
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - localhost
+      secretName: poc-tls-secret
   rules:
-    - http:
+    - host: localhost
+      http:
         paths:
           - path: /api
             pathType: Prefix

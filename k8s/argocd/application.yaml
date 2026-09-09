@@ -1,0 +1,46 @@
+# ArgoCD Application manifest — GitOps-driven continuous deployment.
+#
+# Prerequisites:
+#   1. Install ArgoCD in cluster:
+#      kubectl create namespace argocd
+#      kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+#
+#   2. Register your GitHub repo (or use SSH):
+#      argocd repo add https://github.com/YOUR_ORG/YOUR_REPO.git \
+#        --username YOUR_USER --password YOUR_PAT
+#
+#   3. Apply this manifest:
+#      kubectl apply -f k8s/argocd/application.yaml
+#
+# ArgoCD will then watch the k8s/overlays/prod path and auto-sync on every push.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: poc-app
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # Replace with your actual repository URL
+    repoURL: https://github.com/YOUR_ORG/js-architecture-poc.git
+    targetRevision: HEAD
+    path: k8s/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: poc
+  syncPolicy:
+    automated:
+      prune: true       # Remove resources no longer in Git
+      selfHeal: true    # Revert out-of-band changes
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

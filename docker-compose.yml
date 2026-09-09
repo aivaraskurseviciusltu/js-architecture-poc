@@ -111,6 +111,11 @@ services:
     environment:
       PORT: 3000
       ORDER_SERVICE_URL: http://order-service:3001
+      # JWT secret for local dev — override in production with a strong random value
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me-in-production}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      # Optional: override default dev users (alice/bob). See .env.example for format.
+      DEV_USERS: ${DEV_USERS:-}
     ports:
       - "3000:3000"
     depends_on:
@@ -124,7 +129,8 @@ services:
         VITE_BFF_URL: ${VITE_BFF_URL:-http://localhost:3000}
     restart: unless-stopped
     ports:
-      - "4200:80"
+      # nginx-unprivileged serves on 8080 (not 80)
+      - "4200:8080"
     depends_on:
       - bff
 

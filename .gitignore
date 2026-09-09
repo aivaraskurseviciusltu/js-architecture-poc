@@ -38,3 +38,7 @@ override.tf.json
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+# Plaintext Kubernetes secrets (use SealedSecrets instead)
+k8s/**/secret.yaml
+# Never commit plain tfvars with secrets
+environments/prod/terraform.tfvars

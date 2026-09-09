@@ -13,6 +13,15 @@ spec:
       labels:
         app: order-service
     spec:
+      serviceAccountName: order-service
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -26,6 +35,13 @@ spec:
         - name: order-service
           image: order-service:local
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop: [ALL]
           ports:
             - containerPort: 3001
           envFrom:
@@ -37,6 +53,9 @@ spec:
                 secretKeyRef:
                   name: mongodb-secret
                   key: MONGODB_URI
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           resources:
             requests:
               cpu: 100m
@@ -64,3 +83,6 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
             failureThreshold: 3
+      volumes:
+        - name: tmp
+          emptyDir: {}
