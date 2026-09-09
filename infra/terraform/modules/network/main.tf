@@ -96,11 +96,11 @@ resource "aws_route_table_association" "private" {
 }
 
 # ── VPC Flow Logs ─────────────────────────────────────────────────────────────
+#tfsec:ignore:aws-cloudwatch-log-group-customer-key -- CMK encryption for flow logs is a cost/complexity tradeoff; acceptable for PoC
 resource "aws_cloudwatch_log_group" "flow_logs" {
   name              = "/aws/vpc/${var.name_prefix}/flow-logs"
   retention_in_days = 30
 
-  # tfsec:ignore:aws-cloudwatch-log-group-customer-key
   tags = { Name = "${var.name_prefix}-flow-logs" }
 }
 
@@ -117,6 +117,7 @@ resource "aws_iam_role" "flow_logs" {
   })
 }
 
+#tfsec:ignore:aws-iam-no-policy-wildcards -- resources are scoped to the specific flow log group ARN; tfsec false-positive on logs:CreateLogGroup action name
 resource "aws_iam_role_policy" "flow_logs" {
   name = "${var.name_prefix}-vpc-flow-logs-policy"
   role = aws_iam_role.flow_logs.id

@@ -39,6 +39,8 @@ resource "aws_docdb_cluster_parameter_group" "main" {
   }
 }
 
+#tfsec:ignore:aws-documentdb-enable-log-export -- audit/profiler log export not required for PoC; enable in prod for compliance
+#tfsec:ignore:aws-documentdb-encryption-customer-key -- AWS-managed key is sufficient for PoC; use CMK in prod for fine-grained control
 resource "aws_docdb_cluster" "main" {
   cluster_identifier              = "${var.name_prefix}-docdb"
   engine                          = "docdb"
@@ -57,6 +59,7 @@ resource "aws_docdb_cluster" "main" {
   tags = { Name = "${var.name_prefix}-docdb" }
 }
 
+#tfsec:ignore:aws-documentdb-encryption-customer-key -- AWS-managed key is sufficient for PoC; use CMK in prod for fine-grained control
 resource "aws_docdb_cluster_instance" "main" {
   count              = var.instance_count
   identifier         = "${var.name_prefix}-docdb-${count.index}"
@@ -67,10 +70,10 @@ resource "aws_docdb_cluster_instance" "main" {
 }
 
 # ── Credentials in Secrets Manager ───────────────────────────────────────────
+#tfsec:ignore:aws-ssm-secret-use-customer-key -- AWS-managed key is sufficient for PoC; use CMK in prod
 resource "aws_secretsmanager_secret" "docdb" {
   name                    = "${var.name_prefix}/docdb/credentials"
   recovery_window_in_days = 7
-  # tfsec:ignore:aws-ssm-secret-use-customer-key
   tags = { Name = "${var.name_prefix}-docdb-secret" }
 }
 

@@ -1,3 +1,4 @@
+#tfsec:ignore:aws-ecr-repository-customer-key -- AES256 (AWS-managed) encryption is sufficient for PoC; use KMS CMK in prod for key-rotation control
 resource "aws_ecr_repository" "apps" {
   for_each             = toset(var.app_names)
   name                 = "${var.name_prefix}/${each.key}"

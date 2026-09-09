@@ -4,4 +4,3 @@ variable "private_subnet_ids" { type = list(string) }
 variable "eks_node_sg_id" { type = string }
 variable "node_type" { type = string }
 variable "num_cache_nodes" { type = number }
-variable "environment" { type = string }

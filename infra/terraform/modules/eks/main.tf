@@ -1,4 +1,3 @@
-data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
 resource "aws_kms_key" "eks" {
@@ -81,6 +80,8 @@ resource "aws_security_group" "nodes" {
 }
 
 # ── EKS Cluster ───────────────────────────────────────────────────────────────
+#tfsec:ignore:aws-eks-no-public-cluster-access
+#tfsec:ignore:aws-eks-no-public-cluster-access-to-cidr
 resource "aws_eks_cluster" "main" {
   name     = local.cluster_name
   version  = var.cluster_version
@@ -90,8 +91,8 @@ resource "aws_eks_cluster" "main" {
     subnet_ids              = var.private_subnet_ids
     security_group_ids      = [aws_security_group.cluster.id]
     endpoint_private_access = true
-    # tfsec:ignore:aws-eks-no-public-cluster-access tfsec:ignore:aws-eks-no-public-cluster-access-to-cidr
-    endpoint_public_access = true # Set to false for full private cluster in prod
+    # PoC only — set endpoint_public_access = false for a fully private cluster in prod
+    endpoint_public_access = true
   }
 
   encryption_config {

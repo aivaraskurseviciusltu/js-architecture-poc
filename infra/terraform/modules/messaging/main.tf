@@ -1,5 +1,4 @@
 data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
 
 # ── KMS key for SNS/SQS encryption ───────────────────────────────────────────
 resource "aws_kms_key" "messaging" {
