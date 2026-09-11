@@ -14,6 +14,8 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -subj "/CN=localhost/O=poc" \
   -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" 2>/dev/null
 
+SECRET_NAME="poc-tls-secret"
+
 kubectl create secret tls "${SECRET_NAME}" \
   --namespace "${NAMESPACE}" \
   --cert="${CERT_DIR}/tls.crt" \

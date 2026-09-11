@@ -6,7 +6,7 @@ export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Get(':productId')
-  getStock(@Param('productId') productId: string) {
-    return this.inventoryService.getStock(productId);
+  getStockByProductId(@Param('productId') productId: string) {
+    return this.inventoryService.findStockByProductId(productId);
   }
 }

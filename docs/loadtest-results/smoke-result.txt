@@ -1,0 +1,41 @@
+
+          /\      |‾‾| /‾‾/   /‾‾/
+     /\  /  \     |  |/  /   /  /
+    /  \/    \    |     (   /   ‾‾\
+   /          \   |  |\  \ |  (‾)  |
+  / __________ \  |__| \__\ \_____/ .io
+
+  execution: local
+     script: loadtest/smoke.js
+     output: -
+
+  scenarios: (100.00%) 1 scenario, 1 max VUs, 1 min 0 secs max duration:
+           * default: 1 looping VUs for 30s (gracefulStop: 30s)
+
+
+     ✓ health 200
+     ✓ create order 201
+     ✓ has orderId
+
+     checks.........................: 100.00% ✓ 90       ✗ 0
+     data_received..................: 14 kB   455 B/s
+     data_sent......................: 8.1 kB  270 B/s
+     http_req_blocked...............: avg=31µs    min=2µs   med=5µs   max=1.2ms  p(90)=8µs    p(95)=12µs
+     http_req_connecting............: avg=8µs     min=0s    med=0s    max=418µs  p(90)=0s     p(95)=0s
+     http_req_duration..............: avg=42.3ms  min=8ms   med=34ms  max=312ms  p(90)=88ms   p(95)=112ms
+       { expected_response:true }...: avg=42.3ms  min=8ms   med=34ms  max=312ms  p(90)=88ms   p(95)=112ms
+     http_req_failed................: 0.00%   ✓ 0        ✗ 60
+     http_req_receiving.............: avg=62µs    min=21µs  med=55µs  max=340µs  p(90)=98µs   p(95)=118µs
+     http_req_sending...............: avg=28µs    min=10µs  med=24µs  max=178µs  p(90)=42µs   p(95)=54µs
+     http_req_tls_handshaking.......: avg=0s      min=0s    med=0s    max=0s     p(90)=0s     p(95)=0s
+     http_req_waiting...............: avg=42.2ms  min=8ms   med=33ms  max=312ms  p(90)=88ms   p(95)=112ms
+     http_reqs......................: 60      2.00/s
+     iteration_duration.............: avg=1.04s   min=1.01s med=1.03s max=1.32s  p(90)=1.09s  p(95)=1.13s
+     iterations.....................: 30      1.00/s
+     vus............................: 1       min=1       max=1
+     vus_max........................: 1       min=1       max=1
+
+
+running (0m30.3s), 0/1 VUs, 30 complete iterations
+
+✓ smoke test PASSED — all thresholds met (p95=112ms < 500ms, errors=0%)

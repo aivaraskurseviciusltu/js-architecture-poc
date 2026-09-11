@@ -7,12 +7,17 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
-  create(@Body() dto: CreateOrderDto) {
-    return this.ordersService.create(dto);
+  createOrder(@Body() dto: CreateOrderDto) {
+    return this.ordersService.createOrder(dto);
+  }
+
+  @Get()
+  getAllOrders() {
+    return this.ordersService.findAllOrders();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.ordersService.findById(id);
+  getOrderById(@Param('id') id: string) {
+    return this.ordersService.findOrderById(id);
   }
 }

@@ -1,7 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { OrderSchema, OrderDocument } from './order.schema';
+import { Injectable } from '@nestjs/common';
+import { OrderRepository } from './order.repository';
 import { CreateOrderDto } from './create-order.dto';
 import { Order, OrderCreatedEvent } from '@poc/shared-types';
 import { EventPublisher } from '@poc/messaging';
@@ -10,22 +8,19 @@ import { EventPublisher } from '@poc/messaging';
 export class OrdersService {
   private readonly publisher: EventPublisher;
 
-  constructor(
-    @InjectModel(OrderSchema.name) private readonly orderModel: Model<OrderDocument>,
-  ) {
+  constructor(private readonly orderRepository: OrderRepository) {
     const topicArn = process.env['SNS_ORDER_EVENTS_ARN'] ?? '';
     this.publisher = new EventPublisher(topicArn);
   }
 
-  async create(dto: CreateOrderDto): Promise<Order> {
+  async createOrder(dto: CreateOrderDto): Promise<Order> {
     const totalAmount = dto.items.reduce(
       (sum, item) => sum + item.quantity * item.unitPrice,
       0,
     );
-    const created = await this.orderModel.create({ ...dto, totalAmount });
-    const order = this.toOrder(created);
+    const doc = await this.orderRepository.create({ ...dto, totalAmount });
+    const order = this.orderRepository.toOrder(doc);
 
-    // Publish after successful write
     const event: OrderCreatedEvent = {
       orderId: order.id,
       customerId: order.customerId,
@@ -38,22 +33,13 @@ export class OrdersService {
     return order;
   }
 
-  async findById(id: string): Promise<Order> {
-    const doc = await this.orderModel.findById(id).exec();
-    if (!doc) throw new NotFoundException(`Order ${id} not found`);
-    return this.toOrder(doc);
+  async findOrderById(id: string): Promise<Order> {
+    const doc = await this.orderRepository.findById(id);
+    return this.orderRepository.toOrder(doc);
   }
 
-  private toOrder(doc: OrderDocument): Order {
-    const plain = doc.toObject({ virtuals: true }) as Record<string, unknown>;
-    return {
-      id: String(plain['_id']),
-      customerId: plain['customerId'] as string,
-      items: plain['items'] as Order['items'],
-      totalAmount: plain['totalAmount'] as number,
-      status: plain['status'] as Order['status'],
-      createdAt: (plain['createdAt'] as Date).toISOString(),
-      updatedAt: (plain['updatedAt'] as Date).toISOString(),
-    };
+  async findAllOrders(): Promise<Order[]> {
+    const docs = await this.orderRepository.findAll();
+    return docs.map(doc => this.orderRepository.toOrder(doc));
   }
 }

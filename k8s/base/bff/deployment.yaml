@@ -47,6 +47,12 @@ spec:
           envFrom:
             - configMapRef:
                 name: bff-config
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bff-secret
+                  key: JWT_SECRET
           volumeMounts:
             - name: tmp
               mountPath: /tmp

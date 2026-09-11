@@ -126,8 +126,8 @@ export function LoginPage({ onLoggedIn }: Props) {
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, mt: 0.5, flexWrap: 'wrap' }}>
               {[
-                { user: 'alice', pass: 'alice123', role: 'admin' },
-                { user: 'bob',   pass: 'bob123',   role: 'user'  },
+                { user: 'admin',   pass: 'admin',   role: 'admin' },
+                { user: 'aivaras', pass: 'aivaras', role: 'user'  },
               ].map(({ user, pass, role }) => (
                 <Button
                   key={user}

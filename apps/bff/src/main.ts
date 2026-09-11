@@ -3,6 +3,16 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
 import helmet from 'helmet';
 import { AllExceptionsFilter } from './app/filters/all-exceptions.filter';
+import { initMetrics } from '@poc/shared-types';
+
+// Load .env in local dev (no-op in production where env vars are injected by the platform)
+if (process.env['NODE_ENV'] !== 'production') {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('dotenv').config({ path: require('path').resolve(__dirname, '../../../.env') });
+}
+
+// Initialise Prometheus registry before the app starts
+initMetrics('bff');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

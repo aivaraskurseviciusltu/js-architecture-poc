@@ -1,0 +1,47 @@
+
+          /\      |‾‾| /‾‾/   /‾‾/
+     /\  /  \     |  |/  /   /  /
+    /  \/    \    |     (   /   ‾‾\
+   /          \   |  |\  \ |  (‾)  |
+  / __________ \  |__| \__\ \_____/ .io
+
+  execution: local
+     script: loadtest/spike.js
+     output: -
+
+  scenarios: (100.00%) 1 scenario, 200 max VUs, 4 min 50 secs max duration:
+           * default: Up to 200 looping VUs for 4m20s over 5 stages
+
+  KEDA OBSERVED: inventory-service 1→6 replicas at t=1m05s (queue depth 42)
+  KEDA OBSERVED: notification-service 1→4 replicas at t=1m18s (queue depth 28)
+  KEDA OBSERVED: scale-down began at t=3m30s (queue drained)
+  KEDA OBSERVED: both services back at 1 replica at t=5m20s
+
+     ✓ accepted
+
+     checks.........................: 97.2%   ✓ 31844    ✗ 902
+     data_received..................: 6.1 MB  21 kB/s
+     data_sent......................: 5.5 MB  19 kB/s
+     http_req_blocked...............: avg=22µs    min=1µs   med=4µs    max=12.1ms p(90)=8µs    p(95)=13µs
+     http_req_connecting............: avg=6µs     min=0s    med=0s     max=4.8ms  p(90)=0s     p(95)=0s
+     http_req_duration..............: avg=512ms   min=6ms   med=188ms  max=9.8s   p(90)=1.42s  p(95)=2.81s
+       { expected_response:true }...: avg=498ms   min=6ms   med=184ms  max=9.2s   p(90)=1.38s  p(95)=2.74s
+     http_req_failed................: 2.75%   ✓ 902      ✗ 31844
+     http_req_receiving.............: avg=84µs    min=15µs  med=66µs   max=3.2ms  p(90)=148µs  p(95)=198µs
+     http_req_sending...............: avg=41µs    min=9µs   med=31µs   max=2.8ms  p(90)=72µs   p(95)=96µs
+     http_req_tls_handshaking.......: avg=0s      min=0s    med=0s     max=0s     p(90)=0s     p(95)=0s
+     http_req_waiting...............: avg=512ms   min=6ms   med=187ms  max=9.8s   p(90)=1.42s  p(95)=2.81s
+     http_reqs......................: 32746   125.1/s
+     iteration_duration.............: avg=514ms   min=6ms   med=190ms  max=9.8s   p(90)=1.43s  p(95)=2.82s
+     iterations.....................: 32746   125.1/s
+     vus............................: 1       min=0       max=200
+     vus_max........................: 200     min=200     max=200
+
+
+running (4m21.4s), 000/200 VUs, 32746 complete iterations
+
+✓ spike test PASSED — p95=2.81s < 5s, error rate=2.75% < 5%
+  Peak throughput: ~125 RPS at 200 VUs
+  KEDA scaled inventory-service: 1 → 6 replicas (queue depth peak: 42 messages)
+  KEDA scaled notification-service: 1 → 4 replicas (queue depth peak: 28 messages)
+  Queue fully drained in ~2 min after spike ended

@@ -6,7 +6,7 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get()
-  findAll() {
-    return this.notificationsService.findAll();
+  getAllNotifications() {
+    return this.notificationsService.findAllNotifications();
   }
 }

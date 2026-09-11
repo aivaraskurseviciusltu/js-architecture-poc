@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { OrdersModule } from './orders/orders.module';
 import { HealthModule } from './health/health.module';
 import { MongoSanitizeMiddleware } from './middleware/mongo-sanitize.middleware';
+import { MetricsMiddleware, MetricsController } from '@poc/shared-types';
 
 @Module({
   imports: [
@@ -19,10 +20,10 @@ import { MongoSanitizeMiddleware } from './middleware/mongo-sanitize.middleware'
     OrdersModule,
     HealthModule,
   ],
+  controllers: [MetricsController],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    // Apply NoSQL sanitize middleware to all routes
-    consumer.apply(MongoSanitizeMiddleware).forRoutes('*');
+    consumer.apply(MongoSanitizeMiddleware, MetricsMiddleware).forRoutes('*');
   }
 }

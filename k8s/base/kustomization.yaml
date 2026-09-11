@@ -7,17 +7,14 @@ resources:
   - namespace.yaml
   - ingress.yaml
   - network-policies.yaml
-  # Sealed Secrets — replaces plaintext mongodb/secret.yaml
-  # Before first deploy: install the sealed-secrets controller and run kubeseal
-  # See k8s/base/sealed-secrets/mongodb-sealed-secret.yaml for instructions
-  - sealed-secrets/mongodb-sealed-secret.yaml
+  # MongoDB plaintext secret for local k3d only.
+  # Production: replace with sealed-secrets/mongodb-sealed-secret.yaml
+  # and install the sealed-secrets controller first.
+  - mongodb/secret.yaml
   # RBAC — ServiceAccounts, Roles, RoleBindings per service
   - rbac/service-accounts.yaml
   - rbac/roles.yaml
   - rbac/role-bindings.yaml
-  # cert-manager — ClusterIssuer (local self-signed) + TLS certificate
-  # Requires cert-manager to be installed first (see cluster-issuer.yaml comments)
-  - cert-manager/cluster-issuer.yaml
   # MongoDB
   - mongodb/service.yaml
   - mongodb/statefulset.yaml
@@ -30,7 +27,7 @@ resources:
   - order-service/service.yaml
   - order-service/deployment.yaml
   - order-service/hpa.yaml
-  # BFF
+  # BFF (configmap.yaml also contains the dev bff-secret)
   - bff/configmap.yaml
   - bff/service.yaml
   - bff/deployment.yaml
@@ -46,3 +43,12 @@ resources:
   # Frontend
   - frontend/service.yaml
   - frontend/deployment.yaml
+
+  # ── The resources below require additional controllers ────────────────────────
+  # Uncomment AFTER installing the required controller:
+  #
+  # Sealed Secrets (install first: helm install sealed-secrets ...):
+  #   - sealed-secrets/mongodb-sealed-secret.yaml
+  #
+  # cert-manager (install first: helm install cert-manager ...):
+  #   - cert-manager/cluster-issuer.yaml

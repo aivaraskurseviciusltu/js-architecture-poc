@@ -55,7 +55,7 @@ export class AuthService {
 /** Fallback users when DEV_USERS env var is not set — local dev only. */
 function defaultDevUsers(): DevUser[] {
   return [
-    { username: 'alice',  password: 'alice123',  sub: 'u1', email: 'alice@example.com',  roles: ['admin'] },
-    { username: 'bob',    password: 'bob123',    sub: 'u2', email: 'bob@example.com',    roles: ['user']  },
+    { username: 'admin',   password: 'admin',   sub: 'u1', email: 'admin@example.com',   roles: ['admin'] },
+    { username: 'aivaras', password: 'aivaras', sub: 'u2', email: 'aivaras@example.com', roles: ['user']  },
   ];
 }

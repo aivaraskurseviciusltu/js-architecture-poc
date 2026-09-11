@@ -1,0 +1,155 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: poc-services-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  poc-services.json: |
+    {
+      "title": "PoC Services — RED Metrics & Scaling",
+      "uid": "poc-services",
+      "schemaVersion": 38,
+      "refresh": "15s",
+      "time": { "from": "now-30m", "to": "now" },
+      "tags": ["poc", "red-metrics"],
+      "panels": [
+        {
+          "id": 1,
+          "title": "Request Rate (req/s) — all services",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(bff_http_requests_total[1m])) by (route)",
+              "legendFormat": "bff {{route}}"
+            },
+            {
+              "expr": "sum(rate(order_service_http_requests_total[1m])) by (route)",
+              "legendFormat": "order-service {{route}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "reqps" }
+          }
+        },
+        {
+          "id": 2,
+          "title": "Error Rate (5xx/s) — all services",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(bff_http_errors_total{status_code=~\"5..\"}[1m]))",
+              "legendFormat": "bff 5xx"
+            },
+            {
+              "expr": "sum(rate(order_service_http_errors_total{status_code=~\"5..\"}[1m]))",
+              "legendFormat": "order-service 5xx"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "reqps", "color": { "fixedColor": "red", "mode": "fixed" } }
+          }
+        },
+        {
+          "id": 3,
+          "title": "p95 / p99 Latency (ms) — BFF",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(bff_http_request_duration_seconds_bucket[1m])) by (le)) * 1000",
+              "legendFormat": "p95"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(bff_http_request_duration_seconds_bucket[1m])) by (le)) * 1000",
+              "legendFormat": "p99"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "ms" }
+          }
+        },
+        {
+          "id": 4,
+          "title": "Pod Count (HPA behaviour)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            {
+              "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"poc\"}",
+              "legendFormat": "{{horizontalpodautoscaler}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "short" }
+          }
+        },
+        {
+          "id": 5,
+          "title": "SQS Queue Depth (KEDA target)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+          "targets": [
+            {
+              "expr": "keda_scaler_metrics_value{namespace=\"poc\"}",
+              "legendFormat": "{{scaler}} {{metric}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "short" }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Queue Messages Processed / s",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+          "targets": [
+            {
+              "expr": "sum(rate(inventory_service_queue_messages_processed_total[1m])) by (queue,status)",
+              "legendFormat": "inventory {{queue}} {{status}}"
+            },
+            {
+              "expr": "sum(rate(notification_service_queue_messages_processed_total[1m])) by (queue,status)",
+              "legendFormat": "notification {{queue}} {{status}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "reqps" }
+          }
+        },
+        {
+          "id": 7,
+          "title": "Node CPU Utilisation (%)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+          "targets": [
+            {
+              "expr": "100 - (avg by(node) (rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)",
+              "legendFormat": "{{node}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "percent", "max": 100 }
+          }
+        },
+        {
+          "id": 8,
+          "title": "Pod Memory RSS (MB)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+          "targets": [
+            {
+              "expr": "container_memory_rss{namespace=\"poc\",container!=\"\"} / 1024 / 1024",
+              "legendFormat": "{{pod}} {{container}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "MiB" }
+          }
+        }
+      ]
+    }

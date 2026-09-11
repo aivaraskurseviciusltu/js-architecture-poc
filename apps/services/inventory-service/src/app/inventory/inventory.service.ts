@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SqsConsumer, MessageEnvelope, MessageHandler } from '@poc/messaging';
 import { OrderCreatedEvent } from '@poc/shared-types';
-import { InventorySchema, InventoryDocument } from './inventory.schema';
+import { InventoryRepository } from './inventory.repository';
 import { ProcessedEventSchema, ProcessedEventDocument } from './processed-event.schema';
 
 @Injectable()
@@ -14,7 +14,7 @@ export class InventoryService
   private readonly consumer: SqsConsumer;
 
   constructor(
-    @InjectModel(InventorySchema.name) private readonly inventoryModel: Model<InventoryDocument>,
+    private readonly inventoryRepository: InventoryRepository,
     @InjectModel(ProcessedEventSchema.name) private readonly processedModel: Model<ProcessedEventDocument>,
   ) {
     this.consumer = new SqsConsumer({
@@ -22,12 +22,12 @@ export class InventoryService
     });
   }
 
-  onApplicationBootstrap() {
+  onApplicationBootstrap(): void {
     this.consumer.start<OrderCreatedEvent>(this);
     this.logger.log('SQS consumer started on inventory-queue');
   }
 
-  onApplicationShutdown() {
+  onApplicationShutdown(): void {
     this.consumer.stop();
   }
 
@@ -36,7 +36,6 @@ export class InventoryService
     try {
       await this.processedModel.create({ messageId, processedAt: new Date() });
     } catch (err: unknown) {
-      // E11000 = duplicate key — already processed
       if ((err as { code?: number }).code === 11000) {
         this.logger.warn(`Duplicate message ${messageId}, skipping`);
         return;
@@ -48,16 +47,12 @@ export class InventoryService
     this.logger.log(`Processing OrderCreated ${orderId} — decrementing stock for ${items.length} item(s)`);
 
     for (const item of items) {
-      await this.inventoryModel.findOneAndUpdate(
-        { productId: item.productId },
-        { $inc: { stock: -item.quantity } },
-        { upsert: true, new: true },
-      );
+      await this.inventoryRepository.upsertStock(item.productId, -item.quantity);
     }
   }
 
-  async getStock(productId: string): Promise<{ productId: string; stock: number }> {
-    const doc = await this.inventoryModel.findOne({ productId }).exec();
+  async findStockByProductId(productId: string): Promise<{ productId: string; stock: number }> {
+    const doc = await this.inventoryRepository.findByProductId(productId);
     return { productId, stock: doc?.stock ?? 0 };
   }
 }

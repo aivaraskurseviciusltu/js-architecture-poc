@@ -4,20 +4,26 @@ import {
   CardContent,
   CardHeader,
   Chip,
+  CircularProgress,
   Divider,
+  IconButton,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { Order } from '@poc/shared-types';
 
 interface Props {
   orders: Order[];
+  loading?: boolean;
+  onRefresh?: () => void;
 }
 
 const statusColor: Record<string, 'default' | 'warning' | 'success' | 'error'> = {
@@ -26,7 +32,7 @@ const statusColor: Record<string, 'default' | 'warning' | 'success' | 'error'> =
   cancelled:  'error',
 };
 
-export function OrderList({ orders }: Props) {
+export function OrderList({ orders, loading = false, onRefresh }: Props) {
   return (
     <Card variant="outlined" sx={{ mt: 3 }}>
       <CardHeader
@@ -37,11 +43,32 @@ export function OrderList({ orders }: Props) {
             <Chip label={orders.length} size="small" color="primary" variant="outlined" />
           </Box>
         }
-        subheader={orders.length === 0 ? 'No orders placed yet' : `Showing ${orders.length} order${orders.length !== 1 ? 's' : ''}`}
+        subheader={
+          loading
+            ? 'Loading…'
+            : orders.length === 0
+            ? 'No orders placed yet'
+            : `Showing ${orders.length} order${orders.length !== 1 ? 's' : ''}`
+        }
+        action={
+          onRefresh && (
+            <Tooltip title="Refresh orders">
+              <span>
+                <IconButton onClick={onRefresh} disabled={loading} size="small" sx={{ mr: 1, mt: 0.5 }}>
+                  {loading ? <CircularProgress size={18} /> : <RefreshIcon />}
+                </IconButton>
+              </span>
+            </Tooltip>
+          )
+        }
       />
       <Divider />
       <CardContent sx={{ p: 0 }}>
-        {orders.length === 0 ? (
+        {loading ? (
+          <Box sx={{ py: 6, textAlign: 'center' }}>
+            <CircularProgress size={32} />
+          </Box>
+        ) : orders.length === 0 ? (
           <Box sx={{ py: 6, textAlign: 'center' }}>
             <ReceiptLongIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
             <Typography color="text.secondary">Place your first order above</Typography>

@@ -224,10 +224,12 @@ jobs:
           if-no-files-found: ignore
 
       # Terraform security scan
+      # Local equivalent (no Docker needed): tfsec infra/terraform
       - name: tfsec
         uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6  # v1.0.3
         with:
           working_directory: infra/terraform
+          additional_args: --no-color
 
       - name: tflint
         uses: terraform-linters/setup-tflint@19a52fbac37dacb22a09518e4ef6ee234f2d4987  # v4.0.0

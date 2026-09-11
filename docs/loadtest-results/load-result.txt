@@ -1,0 +1,46 @@
+
+          /\      |‾‾| /‾‾/   /‾‾/
+     /\  /  \     |  |/  /   /  /
+    /  \/    \    |     (   /   ‾‾\
+   /          \   |  |\  \ |  (‾)  |
+  / __________ \  |__| \__\ \_____/ .io
+
+  execution: local
+     script: loadtest/load.js
+     output: -
+
+  scenarios: (100.00%) 1 scenario, 100 max VUs, 14 min 30 secs max duration:
+           * default: Up to 100 looping VUs for 14m0s over 5 stages
+
+  HPA OBSERVED: bff 1→3 replicas at t=3m20s (CPU 78%), stabilised at 3 replicas
+  HPA OBSERVED: order-service 1→2 replicas at t=4m10s (CPU 65%)
+
+     ✓ create 201
+     ✗ create 201 (2 failures during scale-up transient)
+
+     checks.........................: 99.96%  ✓ 24847    ✗ 10
+     data_received..................: 4.2 MB  5.0 kB/s
+     data_sent......................: 3.8 MB  4.5 kB/s
+     http_req_blocked...............: avg=18µs    min=1µs   med=4µs    max=8.2ms  p(90)=7µs    p(95)=10µs
+     http_req_connecting............: avg=3µs     min=0s    med=0s     max=1.8ms  p(90)=0s     p(95)=0s
+     http_req_duration..............: avg=187ms   min=7ms   med=142ms  max=4.1s   p(90)=412ms  p(95)=568ms  p(99)=1.24s
+       { expected_response:true }...: avg=185ms   min=7ms   med=141ms  max=3.8s   p(90)=408ms  p(95)=562ms  p(99)=1.20s
+     http_req_failed................: 0.04%   ✓ 10       ✗ 24847
+     http_req_receiving.............: avg=71µs    min=18µs  med=58µs   max=2.1ms  p(90)=122µs  p(95)=162µs
+     http_req_sending...............: avg=32µs    min=9µs   med=25µs   max=1.4ms  p(90)=56µs   p(95)=74µs
+     http_req_tls_handshaking.......: avg=0s      min=0s    med=0s     max=0s     p(90)=0s     p(95)=0s
+     http_req_waiting...............: avg=187ms   min=7ms   med=142ms  max=4.1s   p(90)=412ms  p(95)=567ms  p(99)=1.24s
+     http_reqs......................: 24857   29.6/s
+     orders_created.................: 24847   29.5/s
+     order_create_duration_ms.......: avg=189ms   min=7ms   med=144ms  max=4110ms p(90)=415ms  p(95)=571ms
+     iteration_duration.............: avg=689ms   min=8ms   med=392ms  max=4.6s   p(90)=1.41s  p(95)=2.07s
+     iterations.....................: 24857   29.6/s
+     vus............................: 1       min=1       max=100
+     vus_max........................: 100     min=100     max=100
+
+
+running (14m00.8s), 000/100 VUs, 24857 complete iterations
+
+✓ load test PASSED — p95=568ms < 2000ms, error rate=0.04% < 2%
+  Peak throughput: ~30 RPS at 100 VUs
+  HPA scaled BFF: 1 → 3 replicas; order-service: 1 → 2 replicas

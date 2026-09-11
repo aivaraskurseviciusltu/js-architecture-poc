@@ -3,7 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SqsConsumer, MessageEnvelope, MessageHandler } from '@poc/messaging';
 import { OrderCreatedEvent } from '@poc/shared-types';
-import { NotificationSchema, NotificationDocument } from './notification.schema';
+import { NotificationRepository } from './notification.repository';
+import { NotificationDocument } from './notification.schema';
 import { ProcessedEventSchema, ProcessedEventDocument } from './processed-event.schema';
 
 @Injectable()
@@ -14,7 +15,7 @@ export class NotificationsService
   private readonly consumer: SqsConsumer;
 
   constructor(
-    @InjectModel(NotificationSchema.name) private readonly notificationModel: Model<NotificationDocument>,
+    private readonly notificationRepository: NotificationRepository,
     @InjectModel(ProcessedEventSchema.name) private readonly processedModel: Model<ProcessedEventDocument>,
   ) {
     this.consumer = new SqsConsumer({
@@ -22,12 +23,12 @@ export class NotificationsService
     });
   }
 
-  onApplicationBootstrap() {
+  onApplicationBootstrap(): void {
     this.consumer.start<OrderCreatedEvent>(this);
     this.logger.log('SQS consumer started on notification-queue');
   }
 
-  onApplicationShutdown() {
+  onApplicationShutdown(): void {
     this.consumer.stop();
   }
 
@@ -46,10 +47,10 @@ export class NotificationsService
     const { orderId, customerId, totalAmount } = envelope.payload;
     this.logger.log(`Sending notification for order ${orderId} to customer ${customerId}`);
 
-    await this.notificationModel.create({ orderId, customerId, totalAmount });
+    await this.notificationRepository.create({ orderId, customerId, totalAmount });
   }
 
-  async findAll() {
-    return this.notificationModel.find().sort({ createdAt: -1 }).limit(50).exec();
+  async findAllNotifications(): Promise<NotificationDocument[]> {
+    return this.notificationRepository.findAll();
   }
 }

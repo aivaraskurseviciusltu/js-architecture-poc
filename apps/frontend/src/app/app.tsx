@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   AppBar,
   Avatar,
@@ -21,7 +21,7 @@ import { Order } from '@poc/shared-types';
 import { LoginPage } from './LoginPage';
 import { CreateOrderForm } from './CreateOrderForm';
 import { OrderList } from './OrderList';
-import { clearToken, LoginResult } from './api';
+import { AUTH_MODE, clearToken, fetchOrders, LoginResult, parseCognitoCallbackHash, redirectToCognito } from './api';
 
 const theme = createTheme({
   palette: {
@@ -47,7 +47,43 @@ const theme = createTheme({
 export function App() {
   const [session, setSession] = useState<LoginResult | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  // ── Cognito: on first render check if we just came back from Cognito Hosted UI
+  const cognitoChecked = useRef(false);
+  useEffect(() => {
+    if (AUTH_MODE !== 'cognito' || cognitoChecked.current) return;
+    cognitoChecked.current = true;
+    const result = parseCognitoCallbackHash();
+    if (result) {
+      // Token arrived in the URL hash — store it and enter the app
+      import('./api').then(({ setToken }) => setToken(result.accessToken));
+      setSession(result);
+    } else {
+      // No token yet — send the user to Cognito Hosted UI
+      redirectToCognito();
+    }
+  }, []);
+
+  const loadOrders = useCallback(async () => {
+    setOrdersLoading(true);
+    try {
+      const data = await fetchOrders();
+      setOrders(data);
+    } catch {
+      // silently ignore — table will show empty state
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, []);
+
+  // Fetch orders from the API whenever the user logs in
+  useEffect(() => {
+    if (session) {
+      void loadOrders();
+    }
+  }, [session, loadOrders]);
 
   const handleLoggedIn = (result: LoginResult) => {
     setSession(result);
@@ -62,6 +98,11 @@ export function App() {
   };
 
   if (!session) {
+    // Cognito mode: the useEffect above is handling the redirect — show nothing
+    if (AUTH_MODE === 'cognito') {
+      return null;
+    }
+    // Local mode: show the username/password login form
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
@@ -80,7 +121,7 @@ export function App() {
       <AppBar position="sticky" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'white', color: 'text.primary' }}>
         <Toolbar sx={{ gap: 1 }}>
           <InventoryIcon color="primary" sx={{ mr: 0.5 }} />
-          <Typography variant="h6" fontWeight={700} sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
             Order Management
           </Typography>
 
@@ -121,8 +162,12 @@ export function App() {
       {/* ── Main content ── */}
       <Box sx={{ bgcolor: 'background.default', minHeight: 'calc(100vh - 64px)', py: 4 }}>
         <Container maxWidth="lg">
-          <CreateOrderForm onCreated={order => setOrders(prev => [order, ...prev])} />
-          <OrderList orders={orders} />
+          <CreateOrderForm
+            onCreated={order => {
+              setOrders(prev => [order, ...prev]);
+            }}
+          />
+          <OrderList orders={orders} loading={ordersLoading} onRefresh={loadOrders} />
         </Container>
       </Box>
     </ThemeProvider>

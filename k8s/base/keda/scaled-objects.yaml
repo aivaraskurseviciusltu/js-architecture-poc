@@ -1,0 +1,75 @@
+---
+# KEDA ScaledObject — Inventory Service
+# Scales based on SQS (or LocalStack) queue depth.
+# Install KEDA first: helm upgrade --install keda kedacore/keda --namespace keda --create-namespace
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: inventory-service-scaledobject
+  namespace: poc
+spec:
+  scaleTargetRef:
+    name: inventory-service
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  cooldownPeriod: 30
+  pollingInterval: 15
+  triggers:
+    - type: aws-sqs-queue
+      metadata:
+        # Local: use LocalStack endpoint; Prod: omit awsEndpoint to use real SQS
+        queueURL: http://localstack.poc.svc.cluster.local:4566/000000000000/orders-inventory-queue
+        queueLength: "5"        # target: 5 messages per replica
+        awsRegion: us-east-1
+        identityOwner: pod       # use pod IRSA in prod; uses default creds locally
+      authenticationRef:
+        name: keda-localstack-auth
+---
+# KEDA ScaledObject — Notification Service
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: notification-service-scaledobject
+  namespace: poc
+spec:
+  scaleTargetRef:
+    name: notification-service
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  cooldownPeriod: 30
+  pollingInterval: 15
+  triggers:
+    - type: aws-sqs-queue
+      metadata:
+        queueURL: http://localstack.poc.svc.cluster.local:4566/000000000000/orders-notification-queue
+        queueLength: "5"
+        awsRegion: us-east-1
+        identityOwner: pod
+      authenticationRef:
+        name: keda-localstack-auth
+---
+# TriggerAuthentication — LocalStack (no real credentials needed locally)
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-localstack-auth
+  namespace: poc
+spec:
+  secretTargetRef:
+    - parameter: awsAccessKeyID
+      name: localstack-aws-creds
+      key: AWS_ACCESS_KEY_ID
+    - parameter: awsSecretAccessKey
+      name: localstack-aws-creds
+      key: AWS_SECRET_ACCESS_KEY
+---
+# Plaintext dummy secret for LocalStack (no real AWS creds needed)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: localstack-aws-creds
+  namespace: poc
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test

@@ -1,0 +1,147 @@
+{
+    "metrics": {
+        "http_req_waiting": {
+            "avg": 3.1113500000000003,
+            "min": 1.38,
+            "med": 2.2375,
+            "max": 22.757,
+            "p(90)": 4.1332,
+            "p(95)": 7.312799999999996
+        },
+        "http_req_receiving": {
+            "avg": 0.05330000000000001,
+            "min": 0.024,
+            "med": 0.045,
+            "max": 0.5,
+            "p(90)": 0.0674,
+            "p(95)": 0.07304999999999999
+        },
+        "vus_max": {
+            "value": 1,
+            "min": 1,
+            "max": 1
+        },
+        "http_reqs": {
+            "count": 60,
+            "rate": 1.9847306073874385
+        },
+        "iteration_duration": {
+            "avg": 1007.6613790999999,
+            "min": 1004.494875,
+            "med": 1005.6194164999999,
+            "max": 1042.046542,
+            "p(90)": 1009.9079955000001,
+            "p(95)": 1016.4003186
+        },
+        "http_req_blocked": {
+            "max": 3.727,
+            "p(90)": 0.004,
+            "p(95)": 0.005099999999999995,
+            "avg": 0.06546666666666662,
+            "min": 0.001,
+            "med": 0.003
+        },
+        "http_req_tls_handshaking": {
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0
+        },
+        "vus": {
+            "value": 1,
+            "min": 1,
+            "max": 1
+        },
+        "data_sent": {
+            "count": 11820,
+            "rate": 390.99192965532535
+        },
+        "checks": {
+            "passes": 30,
+            "fails": 60,
+            "value": 0.3333333333333333
+        },
+        "data_received": {
+            "count": 65601,
+            "rate": 2170.005209587056
+        },
+        "http_req_connecting": {
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.007266666666666667,
+            "min": 0,
+            "med": 0,
+            "max": 0.436
+        },
+        "iterations": {
+            "count": 30,
+            "rate": 0.9923653036937192
+        },
+        "http_req_duration": {
+            "avg": 3.184216666666666,
+            "min": 1.413,
+            "med": 2.289,
+            "max": 22.82,
+            "p(90)": 4.2218,
+            "p(95)": 7.372299999999996,
+            "thresholds": {
+                "p(95)<500": false
+            }
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(90)": 4.2218,
+            "p(95)": 6.907999999999994,
+            "avg": 3.4127,
+            "min": 1.86,
+            "med": 2.4195,
+            "max": 22.82
+        },
+        "http_req_sending": {
+            "min": 0.009,
+            "med": 0.014,
+            "max": 0.165,
+            "p(90)": 0.0221,
+            "p(95)": 0.03749999999999992,
+            "avg": 0.019566666666666666
+        },
+        "http_req_failed": {
+            "passes": 30,
+            "fails": 30,
+            "thresholds": {
+                "rate<0.01": true
+            },
+            "value": 0.5
+        }
+    },
+    "root_group": {
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "health 200": {
+                    "id": "8e4f90a842a57472549a6b2cf699032d",
+                    "passes": 30,
+                    "fails": 0,
+                    "name": "health 200",
+                    "path": "::health 200"
+                },
+                "create order 201": {
+                    "name": "create order 201",
+                    "path": "::create order 201",
+                    "id": "8cba04e3f5af90e19b46e96583e80215",
+                    "passes": 0,
+                    "fails": 30
+                },
+                "has orderId": {
+                    "passes": 0,
+                    "fails": 30,
+                    "name": "has orderId",
+                    "path": "::has orderId",
+                    "id": "941722ad157cd7e33d78112d85dce18c"
+                }
+            },
+        "name": "",
+        "path": ""
+    }
+}

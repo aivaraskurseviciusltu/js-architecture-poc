@@ -1,314 +1,285 @@
 # JS Fullstack Architecture PoC
 
-An Nx monorepo demonstrating a fullstack architecture with event-driven microservices.
+> **Badge evidence index** — a production-grade fullstack PoC demonstrating secure cloud orchestration,
+> event-driven scalability, fault tolerance, and documented technology decisions.
 
-## Architecture
+---
 
+## Architecture Diagram
+
+```mermaid
+flowchart TB
+  subgraph Browser
+    U[👤 User]
+  end
+
+  subgraph K8s Cluster / docker-compose
+    FE[Frontend\nReact + Vite\nnginx :8080]
+    BFF[BFF\nNestJS\n:3000]
+    OS[Order Service\nNestJS + Mongoose\n:3001]
+    IS[Inventory Service\nNestJS\n:3002 · KEDA]
+    NS[Notification Service\nNestJS\n:3003 · KEDA]
+    LS[LocalStack\nSNS + SQS\n:4566]
+    DB[(MongoDB 7)]
+    OTEL[OTel Collector\n+ Jaeger :16686]
+    PROM[Prometheus\n+ Grafana]
+  end
+
+  U -->|HTTPS| FE
+  FE -->|/api/*| BFF
+  BFF -->|JWT guard| OS
+  OS --> DB
+  OS -->|OrderCreated| LS
+  LS -->|inventory-queue| IS
+  LS -->|notification-queue| NS
+  IS --> DB
+  NS --> DB
+  BFF & OS -->|OTLP :4318| OTEL
+  BFF & OS & IS & NS -->|/metrics| PROM
 ```
-Browser → Frontend (React/Vite)
-                ↓
-           BFF (NestJS)
-                ↓
-        Order Service (NestJS/Mongo)
-                ↓ SNS publish
-         [order-events topic]
-           /              \
-  inventory-queue    notification-queue
-        ↓                    ↓
- Inventory Service   Notification Service
-  (NestJS/Mongo)       (NestJS/Mongo)
-```
+
+---
 
 ## Stack
 
 | Layer | Tech |
-|---|---|
-| Frontend | React + Vite + TypeScript |
-| BFF | NestJS + TypeScript |
-| Order Service | NestJS + TypeScript + Mongoose |
-| Inventory Service | NestJS + TypeScript + Mongoose |
-| Notification Service | NestJS + TypeScript + Mongoose |
-| Message Bus | AWS SNS → SQS (via LocalStack) |
-| Database | MongoDB 7 (separate DB per service) |
-| Monorepo | Nx 23 (integrated, npm) |
+|-------|------|
+| Frontend | React 18 + Vite + TypeScript + MUI |
+| BFF | NestJS + TypeScript (JWT auth, Helmet, rate limiting) |
+| Order Service | NestJS + TypeScript + Mongoose (NoSQL sanitize, ValidationPipe) |
+| Inventory/Notification | NestJS + TypeScript (SQS consumers, KEDA autoscaling) |
+| Message Bus | AWS SNS → SQS (LocalStack locally, real SQS in prod) |
+| Database | MongoDB 7 (k3d StatefulSet / Atlas / DocumentDB in prod) |
+| Metrics | `prom-client` on all services → Prometheus + Grafana |
+| Tracing | OpenTelemetry SDK → OTel Collector → Jaeger |
+| Monorepo | Nx 23 (integrated, npm, `nx affected` CI) |
+| Container Orchestration | Kubernetes (k3d local, EKS prod via Terraform) |
+| CI/CD | GitHub Actions (lint → test → build → scan → push) |
+| IaC | Terraform (EKS, VPC, DocumentDB, ECR, SNS/SQS, Elasticache, IAM IRSA) |
 
-## Monorepo Structure
+---
 
-```
-apps/
-  frontend/                React + Vite SPA
-  bff/                     NestJS aggregation gateway
-  services/
-    order-service/         Creates orders, publishes OrderCreated to SNS
-    inventory-service/     Consumes inventory-queue, decrements stock
-    notification-service/  Consumes notification-queue, records notifications
-libs/
-  shared-types/            Shared TS interfaces (Order, OrderCreatedEvent…)
-  messaging/               EventPublisher (SNS) + SqsConsumer (polling, backoff, idempotency)
-localstack/
-  init/
-    01-create-resources.sh  Auto-creates SNS/SQS resources on LocalStack start
-```
-
-## Quick Start (Docker)
+## Quick Start (Docker Compose)
 
 ```bash
 # 1. Copy env file
 cp .env.example .env
 
-# 2. Build and start everything
+# 2. Build and start everything (one command)
 docker compose up --build
 
 # Endpoints:
 #   Frontend:              http://localhost:4200
-#   BFF:                   http://localhost:3000
+#   BFF API:               http://localhost:3000
 #   Order Service:         http://localhost:3001
 #   Inventory Service:     http://localhost:3002
 #   Notification Service:  http://localhost:3003
 #   LocalStack:            http://localhost:4566
-#   MongoDB:               localhost:27017
+
+# 3. Log in (dev accounts: alice/alice123  or  bob/bob123)
+curl -X POST http://localhost:3000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"alice","password":"alice123"}'
+# → {"access_token":"eyJ..."}
+
+# 4. Create an order
+curl -X POST http://localhost:3000/api/orders \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <token>' \
+  -d '{"customerId":"alice","items":[{"sku":"WIDGET-001","quantity":2,"unitPrice":9.99}]}'
 ```
 
-## Local Development
+---
+
+## Local Development (hot-reload)
 
 ```bash
 npm install
-# Start all services (requires local MongoDB + LocalStack)
-nx run-many -t serve
-
-# Build all
-nx run-many -t build
+nx run-many -t serve    # starts all four NestJS apps + Vite dev server
 ```
+
+Requires local MongoDB (`mongod`) and LocalStack (`docker compose up localstack`).
+
+---
+
+## Kubernetes Deploy (k3d)
+
+```bash
+# 1. Create cluster
+bash scripts/create-cluster.sh
+
+# 2. Build + load images
+bash scripts/build-and-load.sh
+
+# 3. Deploy
+bash scripts/deploy-local.sh
+# → App live at http://localhost:8080
+```
+
+```bash
+# Useful kubectl commands
+kubectl get pods -n poc
+kubectl get hpa -n poc -w           # watch HPA scale BFF/order-service
+kubectl get scaledobject -n poc -w  # watch KEDA scale consumers
+kubectl top pods -n poc
+kubectl logs -n poc -l app=order-service -f
+```
+
+---
+
+## Observability Stack
+
+```bash
+# Install Prometheus + Grafana
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+  -f k8s/observability/kube-prometheus-stack-values.yaml \
+  --namespace monitoring --create-namespace
+
+# Apply Grafana dashboard ConfigMap
+kubectl apply -f k8s/observability/grafana-dashboard-configmap.yaml
+
+# Open Grafana
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3001:80
+# http://localhost:3001  (admin / admin)
+# Dashboard: "PoC Services — RED Metrics & Scaling"
+
+# Port-forward Jaeger trace UI
+kubectl port-forward -n poc svc/jaeger 16686:16686
+# http://localhost:16686
+```
+
+Metrics exposed: `GET /metrics` on all four services (prom-client, RED metrics + default Node.js process metrics).
+
+---
+
+## Load Testing
+
+```bash
+# Prerequisites
+brew install k6
+
+# Get a JWT first
+export JWT_TOKEN=$(curl -s -X POST http://localhost:3000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"alice","password":"alice123"}' | jq -r .access_token)
+
+# Run individual scenarios
+./scripts/run-loadtest.sh smoke   # 1 VU, 30s — sanity check
+./scripts/run-loadtest.sh load    # ramp to 100 VUs — triggers HPA
+./scripts/run-loadtest.sh spike   # 200 VUs burst — triggers KEDA
+./scripts/run-loadtest.sh soak    # 30 VUs for 30 min — stability
+
+# Run all
+./scripts/run-loadtest.sh all
+```
+
+Results are saved to [`docs/loadtest-results/`](docs/loadtest-results/). See [`docs/scaling.md`](docs/scaling.md) for analysis.
+
+---
+
+## CI/CD
+
+| Job | Trigger | What it does |
+|-----|---------|--------------|
+| `lint` | Every push/PR | `nx affected -t lint` |
+| `test` | Every push/PR | `nx affected -t test` (Jest) |
+| `build` | After lint+test | `nx affected -t build` + Docker image builds |
+| `scan` | After build | `npm audit`, Trivy (HIGH/CRITICAL), gitleaks, tfsec, tflint; SBOM artifact |
+| `push` | main branch only | Push all images to GHCR |
+| `cd` | On tag `v*` | Kustomize prod overlay → ArgoCD sync |
+
+All GitHub Actions are pinned by SHA. See [`.github/workflows/`](.github/workflows/).
+
+---
+
+## Infrastructure as Code
+
+```bash
+cd infra/terraform
+terraform init
+terraform validate
+tflint --recursive      # 0 warnings
+tfsec .                 # 0 findings  (macOS: /opt/homebrew/bin/tfsec .)
+
+# Plan (LocalStack)
+terraform plan -var-file=environments/local/terraform.tfvars
+
+# Plan (prod — needs AWS credentials)
+export TF_VAR_docdb_master_password="<secret>"
+terraform plan -var-file=environments/prod/terraform.tfvars
+```
+
+Modules: `network` · `eks` · `mongodb` (DocumentDB) · `elasticache` · `messaging` (SNS+SQS+DLQ+KMS) · `iam` (IRSA) · `ecr`
+
+---
+
+## Security
+
+| Control | Implementation |
+|---------|---------------|
+| Auth | JWT (passport-jwt) on all `/api/orders` routes |
+| Rate limiting | 100 req/min per IP (`@nestjs/throttler`) |
+| Security headers | Helmet middleware |
+| Input validation | `class-validator` + `ValidationPipe` |
+| NoSQL injection | `MongoSanitizeMiddleware` — strips `$`/`.` keys |
+| Secrets | SealedSecrets (k8s local) · ESO + AWS Secrets Manager (prod) |
+| TLS | cert-manager self-signed CA (local) · ACM / Let's Encrypt (prod) |
+| Container hardening | Non-root, `readOnlyRootFilesystem`, drop ALL caps, `seccompProfile: RuntimeDefault` |
+| RBAC | Per-service ServiceAccounts, least-privilege Roles |
+| Network | Default-deny NetworkPolicy + explicit allow rules |
+| CI scans | `npm audit`, Trivy, gitleaks, tfsec, tflint, SBOM (SPDX-JSON) |
+
+See [`docs/security.md`](docs/security.md) for the full threat model (T1–T6).
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [`docs/architecture.md`](docs/architecture.md) | C4 diagrams (Context, Container, Component), data flow, event flow, local-to-cloud mapping |
+| [`docs/scaling.md`](docs/scaling.md) | HPA, KEDA, MongoDB read scaling, caching strategy, load test results |
+| [`docs/security.md`](docs/security.md) | Threat model, secrets management, container hardening, RBAC |
+| [`docs/loadtest-results/`](docs/loadtest-results/) | k6 output for smoke, load, spike, soak scenarios |
+| [`docs/evidence/`](docs/evidence/) | Grafana screenshots (HPA scale-up, KEDA spike, queue drain, memory soak) |
+
+---
 
 ## API Reference
 
 ### BFF (`http://localhost:3000`)
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/orders` | Create order → triggers event pipeline |
-| `GET` | `/api/orders/:id` | Get order by ID |
-| `GET` | `/health` | Health check |
-| `GET` | `/ready` | Readiness check |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/auth/login` | ❌ | Login → JWT |
+| `POST` | `/api/orders` | ✅ JWT | Create order |
+| `GET` | `/api/orders/:id` | ✅ JWT | Get order by ID |
+| `GET` | `/health` | ❌ | Health check |
+| `GET` | `/ready` | ❌ | Readiness |
+| `GET` | `/metrics` | ❌ | Prometheus metrics |
 
 ### Order Service (`http://localhost:3001`)
 | Method | Path | Description |
-|---|---|---|
-| `POST` | `/orders` | Create order + publish SNS event |
+|--------|------|-------------|
+| `POST` | `/orders` | Create order + publish event |
 | `GET` | `/orders/:id` | Get order |
 | `GET` | `/health` | Health |
-| `GET` | `/ready` | Readiness (MongoDB ping) |
+| `GET` | `/metrics` | Prometheus metrics |
 
-### Inventory Service (`http://localhost:3002`)
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/inventory/:productId` | Get current stock level |
-| `GET` | `/health` | Health |
-| `GET` | `/ready` | Readiness (MongoDB ping) |
-
-### Notification Service (`http://localhost:3003`)
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/notifications` | List recorded notifications |
-| `GET` | `/health` | Health |
-| `GET` | `/ready` | Readiness (MongoDB ping) |
-
-## Event Flow
-
-1. `POST /api/orders` → BFF → Order Service persists to `orders` DB.
-2. Order Service publishes `OrderCreated` event to SNS topic `order-events`.
-3. SNS fans out to `inventory-queue` and `notification-queue`.
-4. **Inventory Service** polls `inventory-queue`, decrements stock (`$inc`) atomically.
-5. **Notification Service** polls `notification-queue`, records a notification document.
-6. Both consumers use a `processed_events` collection with a unique index on `messageId` to prevent duplicate processing (idempotency).
-7. Messages that fail after 3 attempts are routed to DLQs (`inventory-dlq`, `notification-dlq`) via SQS redrive policy.
-
-## Database Strategy
-
-One MongoDB instance; each service uses a **separate database name**:
-- `orders` — Order Service
-- `inventory` — Inventory Service
-- `notifications` — Notification Service
+---
 
 ## Environment Variables
 
 See [`.env.example`](.env.example) for all variables. **Never commit `.env`.**
 
-## Kubernetes (Local — k3d)
+Key variables:
 
-### Prerequisites
-
-```bash
-brew install k3d kubectl helm
-```
-
-### 1 — Create the cluster
-
-```bash
-bash scripts/create-cluster.sh
-# Provisions k3d cluster 'poc' with 2 agents, NGINX ingress on :8080, and metrics-server
-```
-
-### 2 — Build images and load into cluster
-
-```bash
-bash scripts/build-and-load.sh
-# Builds all 5 Docker images tagged :local and imports them via k3d image import
-```
-
-### 3 — Deploy
-
-```bash
-bash scripts/deploy-local.sh
-# Generates self-signed TLS, applies k8s/overlays/local, waits for rollouts
-```
-
-**App is live at `http://localhost:8080`**
-
-### Useful commands
-
-```bash
-# All pods
-kubectl get pods -n poc
-
-# Watch HPA
-kubectl get hpa -n poc -w
-
-# Resource usage (requires metrics-server)
-kubectl top pods -n poc
-
-# Tail a service log
-kubectl logs -n poc -l app=order-service -f
-
-# Restart a deployment (simulates pod failure)
-kubectl rollout restart deployment/order-service -n poc
-```
-
-### Trigger HPA scale-up (load test)
-
-```bash
-# Install hey: brew install hey
-hey -z 60s -c 50 http://localhost:8080/api/orders
-# Watch HPA react:
-kubectl get hpa -n poc -w
-```
-
-### Cluster lifecycle
-
-```bash
-# Stop cluster (keeps state)
-k3d cluster stop poc
-
-# Start again
-k3d cluster start poc
-
-# Delete completely
-k3d cluster delete poc
-```
-
-### k8s Directory Structure
-
-```
-k8s/
-├── base/
-│   ├── namespace.yaml
-│   ├── ingress.yaml
-│   ├── network-policies.yaml
-│   ├── mongodb/         (StatefulSet + headless Service + Secret)
-│   ├── localstack/      (Deployment + Service + ConfigMap init script)
-│   ├── order-service/   (Deployment + Service + ConfigMap + HPA)
-│   ├── bff/             (Deployment + Service + ConfigMap + HPA)
-│   ├── inventory-service/
-│   ├── notification-service/
-│   ├── frontend/
-│   └── kustomization.yaml
-└── overlays/
-    ├── local/   ← used by deploy-local.sh (images :local, IfNotPresent)
-    └── prod/    ← placeholder for ECR + external MongoDB Atlas + real TLS
-```
-
-### Production overlay notes
-
-`k8s/overlays/prod/kustomization.yaml` is a documented placeholder. Before applying to prod:
-1. Replace ECR image URIs.
-2. Replace `mongodb-secret` with connection string to MongoDB Atlas or DocumentDB.
-3. Remove LocalStack; point SNS/SQS ARNs to real AWS resources.
-4. Install cert-manager and issue a real TLS certificate.
-
-
-## Infrastructure as Code (Terraform)
-
-Terraform lives under [`infra/terraform/`](infra/terraform/) and targets full AWS deployment.
-
-### Prerequisites
-
-```bash
-brew install hashicorp/tap/terraform tflint
-# tfsec binary installed separately — see scripts/create-cluster.sh
-```
-
-### Directory structure
-
-```
-infra/terraform/
-├── providers.tf          # AWS provider + LocalStack overrides
-├── backend.tf            # S3/DynamoDB backend (commented — enable for prod)
-├── variables.tf          # All input variables
-├── outputs.tf            # Key resource outputs
-├── main.tf               # Module wiring
-├── environments/
-│   ├── local/terraform.tfvars   # LocalStack target
-│   └── prod/terraform.tfvars    # AWS prod (no secrets committed)
-└── modules/
-    ├── network/      VPC, 3 public + 3 private subnets, IGW, NAT, Flow Logs
-    ├── eks/          EKS cluster, managed node group, IRSA OIDC, KMS secrets encryption
-    ├── mongodb/      Amazon DocumentDB, Secrets Manager, Security Group
-    ├── elasticache/  Redis replication group, TLS, private subnet
-    ├── messaging/    SNS topic, SQS queues + DLQs, KMS encryption, subscriptions
-    ├── iam/          IRSA roles with least-privilege policies per service
-    └── ecr/          ECR repos with scan-on-push + lifecycle policies
-```
-
-### Local-to-cloud mapping
-
-| Local (docker-compose / k3d) | AWS (Terraform) |
-|---|---|
-| MongoDB container / StatefulSet | Amazon DocumentDB (`modules/mongodb`) |
-| LocalStack SNS topic `order-events` | AWS SNS topic (`modules/messaging`) |
-| LocalStack SQS `inventory-queue` | AWS SQS queue (`modules/messaging`) |
-| LocalStack SQS `notification-queue` | AWS SQS queue (`modules/messaging`) |
-| Docker credentials in `.env` | AWS Secrets Manager via IRSA (`modules/iam`) |
-| k3d cluster | Amazon EKS (`modules/eks`) |
-| `docker build` + `k3d image import` | ECR push + EKS node pull (`modules/ecr`) |
-| NGINX ingress on localhost:8080 | AWS Load Balancer Controller + ACM TLS |
-
-### Commands
-
-```bash
-cd infra/terraform
-
-# Initialise
-terraform init
-
-# Validate (no credentials needed)
-terraform validate
-terraform fmt -recursive -check
-
-# Lint
-tflint --recursive
-
-# Security scan
-tfsec .
-
-# Plan against LocalStack (start LocalStack first: docker compose up localstack)
-terraform plan -var-file=environments/local/terraform.tfvars \
-  -target=module.messaging -target=module.ecr
-
-# Plan against prod (requires AWS credentials + TF_VAR_docdb_master_password)
-export TF_VAR_docdb_master_password="<secret>"
-terraform plan -var-file=environments/prod/terraform.tfvars
-```
-
-### MongoDB decision
-
-See [`infra/docs/ADR-001-mongodb-choice.md`](infra/docs/ADR-001-mongodb-choice.md) for the DocumentDB vs Atlas decision record.
-
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MONGODB_URI` | `mongodb://localhost:27017` | MongoDB connection string |
+| `JWT_SECRET` | — | JWT signing secret (≥32 bytes in prod) |
+| `CORS_ORIGIN` | `*` | Allowed CORS origin (set to frontend URL in prod) |
+| `ORDER_SERVICE_URL` | `http://localhost:3001` | BFF → order-service URL |
+| `AWS_ENDPOINT_URL` | `http://localhost:4566` | LocalStack endpoint |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318` | OTel collector endpoint |
+| `DEV_USERS` | `alice:alice123,bob:bob123` | Dev login accounts (BFF only) |

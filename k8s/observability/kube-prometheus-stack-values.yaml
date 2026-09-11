@@ -1,0 +1,53 @@
+# kube-prometheus-stack Helm values for the js-architecture-poc cluster
+# Install: helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#            -f k8s/observability/kube-prometheus-stack-values.yaml \
+#            --namespace monitoring --create-namespace
+
+prometheus:
+  prometheusSpec:
+    # Scrape ServiceMonitors from all namespaces
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    serviceMonitorSelector: {}
+    retention: 15d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+grafana:
+  enabled: true
+  adminPassword: "admin"  # change in prod via sealed secret / helm --set grafana.adminPassword
+  persistence:
+    enabled: true
+    size: 5Gi
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL    # pick up ConfigMaps with label grafana_dashboard=1
+      label: grafana_dashboard
+      labelValue: "1"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+alertmanager:
+  enabled: true
+
+# Enable mongodb-exporter as an additional scrape target (optional, for Atlas use pushgateway)
+# Deploy separately: helm install mongodb-exporter prometheus-community/prometheus-mongodb-exporter \
+#   --set mongodb.uri="$(kubectl get secret mongodb-secret -n poc -o jsonpath='{.data.MONGODB_URI}' | base64 -d)"

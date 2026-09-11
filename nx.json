@@ -26,6 +26,7 @@
       "cache": true
     },
     "serve": {
+      "cache": false,
       "dependsOn": [
         "^build"
       ]

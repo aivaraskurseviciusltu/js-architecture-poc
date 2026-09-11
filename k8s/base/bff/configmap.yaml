@@ -6,3 +6,16 @@ metadata:
 data:
   PORT: "3000"
   ORDER_SERVICE_URL: http://order-service:3001
+  CORS_ORIGIN: "*"
+  NODE_ENV: production
+---
+# Dev-only secret for local k3d — JWT_SECRET and MongoDB URI.
+# In production these come from SealedSecrets / External Secrets Operator.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bff-secret
+  namespace: poc
+type: Opaque
+stringData:
+  JWT_SECRET: "dev-secret-change-me-in-production"
