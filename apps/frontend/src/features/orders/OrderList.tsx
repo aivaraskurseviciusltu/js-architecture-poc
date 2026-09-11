@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { Order } from '@poc/shared-types';
+import type { Order } from '@poc/shared-types';
 
 interface Props {
   orders: Order[];
@@ -26,10 +26,10 @@ interface Props {
   onRefresh?: () => void;
 }
 
-const statusColor: Record<string, 'default' | 'warning' | 'success' | 'error'> = {
-  pending:    'warning',
-  confirmed:  'success',
-  cancelled:  'error',
+const STATUS_COLOR: Record<string, 'default' | 'warning' | 'success' | 'error'> = {
+  pending:   'warning',
+  confirmed: 'success',
+  cancelled: 'error',
 };
 
 export function OrderList({ orders, loading = false, onRefresh }: Props) {
@@ -102,12 +102,7 @@ export function OrderList({ orders, loading = false, onRefresh }: Props) {
                       </Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Chip
-                        label={o.status}
-                        size="small"
-                        color={statusColor[o.status] ?? 'default'}
-                        variant="outlined"
-                      />
+                      <Chip label={o.status} size="small" color={STATUS_COLOR[o.status] ?? 'default'} variant="outlined" />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" color="text.secondary">

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -10,15 +11,14 @@ import {
   Grid,
   IconButton,
   TextField,
-  Typography,
-  Alert,
   Tooltip,
+  Typography,
 } from '@mui/material';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import { Order } from '@poc/shared-types';
-import { createOrder } from './api';
+import type { Order } from '@poc/shared-types';
+import { createOrder } from '../../shared/api';
 
 interface Item {
   productId: string;
@@ -35,14 +35,14 @@ const emptyItem = (): Item => ({ productId: '', name: '', quantity: 1, unitPrice
 
 export function CreateOrderForm({ onCreated }: Props) {
   const [customerId, setCustomerId] = useState('');
-  const [items, setItems] = useState<Item[]>([emptyItem()]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [items, setItems]           = useState<Item[]>([emptyItem()]);
+  const [error, setError]           = useState<string | null>(null);
+  const [loading, setLoading]       = useState(false);
 
   const updateItem = (index: number, field: keyof Item, value: string | number) =>
     setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
 
-  const addItem = () => setItems(prev => [...prev, emptyItem()]);
+  const addItem    = () => setItems(prev => [...prev, emptyItem()]);
   const removeItem = (index: number) => setItems(prev => prev.filter((_, i) => i !== index));
 
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
@@ -79,9 +79,7 @@ export function CreateOrderForm({ onCreated }: Props) {
             label="Customer ID"
             value={customerId}
             onChange={e => setCustomerId(e.target.value)}
-            required
-            fullWidth
-            placeholder="customer-123"
+            required fullWidth placeholder="customer-123"
             sx={{ mb: 3 }}
           />
 
@@ -93,50 +91,21 @@ export function CreateOrderForm({ onCreated }: Props) {
             <Box key={i} sx={{ mb: 2 }}>
               <Grid container spacing={1.5} alignItems="center">
                 <Grid item xs={12} sm={3}>
-                  <TextField
-                    label="Product ID"
-                    value={item.productId}
-                    onChange={e => updateItem(i, 'productId', e.target.value)}
-                    required fullWidth size="small"
-                  />
+                  <TextField label="Product ID" value={item.productId} onChange={e => updateItem(i, 'productId', e.target.value)} required fullWidth size="small" />
                 </Grid>
                 <Grid item xs={12} sm={3}>
-                  <TextField
-                    label="Name"
-                    value={item.name}
-                    onChange={e => updateItem(i, 'name', e.target.value)}
-                    required fullWidth size="small"
-                  />
+                  <TextField label="Name" value={item.name} onChange={e => updateItem(i, 'name', e.target.value)} required fullWidth size="small" />
                 </Grid>
                 <Grid item xs={6} sm={2}>
-                  <TextField
-                    label="Qty"
-                    type="number"
-                    value={item.quantity}
-                    onChange={e => updateItem(i, 'quantity', Number(e.target.value))}
-                    inputProps={{ min: 1 }}
-                    required fullWidth size="small"
-                  />
+                  <TextField label="Qty" type="number" value={item.quantity} onChange={e => updateItem(i, 'quantity', Number(e.target.value))} inputProps={{ min: 1 }} required fullWidth size="small" />
                 </Grid>
                 <Grid item xs={6} sm={3}>
-                  <TextField
-                    label="Unit Price ($)"
-                    type="number"
-                    value={item.unitPrice}
-                    onChange={e => updateItem(i, 'unitPrice', Number(e.target.value))}
-                    inputProps={{ min: 0, step: '0.01' }}
-                    required fullWidth size="small"
-                  />
+                  <TextField label="Unit Price ($)" type="number" value={item.unitPrice} onChange={e => updateItem(i, 'unitPrice', Number(e.target.value))} inputProps={{ min: 0, step: '0.01' }} required fullWidth size="small" />
                 </Grid>
                 <Grid item xs={12} sm={1} sx={{ display: 'flex', justifyContent: 'center' }}>
                   <Tooltip title="Remove item">
                     <span>
-                      <IconButton
-                        color="error"
-                        size="small"
-                        onClick={() => removeItem(i)}
-                        disabled={items.length === 1}
-                      >
+                      <IconButton color="error" size="small" onClick={() => removeItem(i)} disabled={items.length === 1}>
                         <DeleteIcon />
                       </IconButton>
                     </span>
@@ -146,12 +115,7 @@ export function CreateOrderForm({ onCreated }: Props) {
             </Box>
           ))}
 
-          <Button
-            startIcon={<AddCircleIcon />}
-            onClick={addItem}
-            size="small"
-            sx={{ mb: 2 }}
-          >
+          <Button startIcon={<AddCircleIcon />} onClick={addItem} size="small" sx={{ mb: 2 }}>
             Add Item
           </Button>
 
@@ -164,13 +128,7 @@ export function CreateOrderForm({ onCreated }: Props) {
                 ${subtotal.toFixed(2)}
               </Typography>
             </Typography>
-            <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={loading || !customerId}
-              sx={{ minWidth: 140 }}
-            >
+            <Button type="submit" variant="contained" size="large" disabled={loading || !customerId} sx={{ minWidth: 140 }}>
               {loading ? <CircularProgress size={22} color="inherit" /> : 'Place Order'}
             </Button>
           </Box>

@@ -1,32 +1,38 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Card,
   CardContent,
   CircularProgress,
   Divider,
+  IconButton,
+  InputAdornment,
   TextField,
   Typography,
-  Alert,
-  InputAdornment,
-  IconButton,
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import { login, setToken, LoginResult } from './api';
+import { login, setToken } from '../../shared/api';
+import type { LoginResult } from '../../shared/api';
 
 interface Props {
   onLoggedIn: (result: LoginResult) => void;
 }
 
+const DEV_ACCOUNTS = [
+  { user: 'admin',   pass: 'admin',   role: 'admin' },
+  { user: 'aivaras', pass: 'aivaras', role: 'user'  },
+];
+
 export function LoginPage({ onLoggedIn }: Props) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername]         = useState('');
+  const [password, setPassword]         = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [error, setError]               = useState<string | null>(null);
+  const [loading, setLoading]           = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,26 +50,11 @@ export function LoginPage({ onLoggedIn }: Props) {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        bgcolor: 'grey.50',
-      }}
-    >
+    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.50' }}>
       <Card sx={{ width: '100%', maxWidth: 420, mx: 2, boxShadow: 4 }}>
         <CardContent sx={{ p: 4 }}>
-          {/* Header */}
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-            <Box
-              sx={{
-                width: 48, height: 48, borderRadius: '50%',
-                bgcolor: 'primary.main', display: 'flex',
-                alignItems: 'center', justifyContent: 'center', mb: 1.5,
-              }}
-            >
+            <Box sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1.5 }}>
               <LockOutlinedIcon sx={{ color: 'white' }} />
             </Box>
             <Typography variant="h5" fontWeight={700}>Sign in</Typography>
@@ -72,19 +63,14 @@ export function LoginPage({ onLoggedIn }: Props) {
             </Typography>
           </Box>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-          )}
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <TextField
               label="Username"
               value={username}
               onChange={e => setUsername(e.target.value)}
-              fullWidth
-              required
-              autoFocus
-              autoComplete="username"
+              fullWidth required autoFocus autoComplete="username"
               sx={{ mb: 2 }}
             />
             <TextField
@@ -92,9 +78,7 @@ export function LoginPage({ onLoggedIn }: Props) {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={e => setPassword(e.target.value)}
-              fullWidth
-              required
-              autoComplete="current-password"
+              fullWidth required autoComplete="current-password"
               sx={{ mb: 3 }}
               InputProps={{
                 endAdornment: (
@@ -106,29 +90,19 @@ export function LoginPage({ onLoggedIn }: Props) {
                 ),
               }}
             />
-            <Button
-              type="submit"
-              variant="contained"
-              fullWidth
-              size="large"
-              disabled={loading || !username || !password}
-            >
+            <Button type="submit" variant="contained" fullWidth size="large" disabled={loading || !username || !password}>
               {loading ? <CircularProgress size={22} color="inherit" /> : 'Sign in'}
             </Button>
           </Box>
 
           <Divider sx={{ my: 3 }} />
 
-          {/* Dev hint */}
           <Box sx={{ bgcolor: 'grey.100', borderRadius: 1, p: 1.5 }}>
             <Typography variant="caption" color="text.secondary" fontWeight={600}>
               Local dev accounts
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, mt: 0.5, flexWrap: 'wrap' }}>
-              {[
-                { user: 'admin',   pass: 'admin',   role: 'admin' },
-                { user: 'aivaras', pass: 'aivaras', role: 'user'  },
-              ].map(({ user, pass, role }) => (
+              {DEV_ACCOUNTS.map(({ user, pass, role }) => (
                 <Button
                   key={user}
                   size="small"
@@ -136,7 +110,10 @@ export function LoginPage({ onLoggedIn }: Props) {
                   onClick={() => { setUsername(user); setPassword(pass); }}
                   sx={{ textTransform: 'none', fontSize: '0.72rem' }}
                 >
-                  {user} <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>({role})</Typography>
+                  {user}
+                  <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                    ({role})
+                  </Typography>
                 </Button>
               ))}
             </Box>
