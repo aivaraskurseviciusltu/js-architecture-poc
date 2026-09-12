@@ -38,6 +38,14 @@
       ],
       "executor": "nx:noop"
     },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/apps/services/notification-service"],
+      "options": {
+        "jestConfig": "apps/services/notification-service/jest.config.ts",
+        "passWithNoTests": true
+      }
+    },
     "serve": {
       "continuous": true,
       "executor": "@nx/js:node",

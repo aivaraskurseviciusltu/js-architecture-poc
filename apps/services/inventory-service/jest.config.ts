@@ -1,13 +1,13 @@
 /* eslint-disable */
 export default {
-  displayName: 'order-service',
+  displayName: 'inventory-service',
   preset: '../../../jest.preset.js',
   testEnvironment: 'node',
   transform: {
     '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
-  coverageDirectory: '../../../coverage/apps/services/order-service',
+  coverageDirectory: '../../../coverage/apps/services/inventory-service',
   transformIgnorePatterns: [
     'node_modules/(?!(@nestjs|rxjs)/)',
   ],
