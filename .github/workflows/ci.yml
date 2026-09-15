@@ -175,6 +175,7 @@ jobs:
       - name: Build order-service image for scanning
         run: |
           docker build \
+            --load \
             -f apps/services/order-service/Dockerfile \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/order-service:${{ github.sha }} \
             .
