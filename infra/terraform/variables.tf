@@ -13,7 +13,7 @@ variable "environment" {
 variable "aws_region" {
   description = "AWS region to deploy resources into"
   type        = string
-  default     = "us-east-1"
+  default     = "eu-north-1"
 }
 
 variable "localstack_endpoint" {
@@ -33,7 +33,7 @@ variable "vpc_cidr" {
 variable "availability_zones" {
   description = "List of AZs to spread subnets across"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  default     = ["eu-north-1a", "eu-north-1b", "eu-north-1c"]
 }
 
 variable "public_subnet_cidrs" {

@@ -7,9 +7,9 @@
 # or via a secrets manager integration in CI/CD.
 
 environment = "prod"
-aws_region  = "us-east-1"
+aws_region  = "eu-north-1"
 
-availability_zones   = ["us-east-1a", "us-east-1b", "us-east-1c"]
+availability_zones   = ["eu-north-1a", "eu-north-1b", "eu-north-1c"]
 public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
 private_subnet_cidrs = ["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]
 

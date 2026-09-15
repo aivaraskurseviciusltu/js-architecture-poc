@@ -35,31 +35,15 @@ resource "aws_subnet" "private" {
   }
 }
 
-# ── Internet Gateway ──────────────────────────────────────────────────────────
+# ── Internet Gateway (public subnet / ALB only) ───────────────────────────────
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   tags   = { Name = "${var.name_prefix}-igw" }
 }
 
-# ── Elastic IPs for NAT ───────────────────────────────────────────────────────
-resource "aws_eip" "nat" {
-  count  = length(var.availability_zones)
-  domain = "vpc"
-  tags   = { Name = "${var.name_prefix}-nat-eip-${count.index + 1}" }
-}
-
-# ── NAT Gateways (one per AZ for HA) ─────────────────────────────────────────
-resource "aws_nat_gateway" "main" {
-  count         = length(var.availability_zones)
-  allocation_id = aws_eip.nat[count.index].id
-  subnet_id     = aws_subnet.public[count.index].id
-
-  tags = { Name = "${var.name_prefix}-nat-${count.index + 1}" }
-
-  depends_on = [aws_internet_gateway.main]
-}
-
 # ── Route Tables ──────────────────────────────────────────────────────────────
+
+# Public route table — ALB needs internet access for inbound user traffic
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -77,14 +61,13 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+# Private route table — no internet route; all AWS service traffic uses VPC Endpoints
 resource "aws_route_table" "private" {
   count  = length(var.availability_zones)
   vpc_id = aws_vpc.main.id
 
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main[count.index].id
-  }
+  # No 0.0.0.0/0 route — private subnet has no internet access by design.
+  # EKS pods reach ECR, SNS, SQS, and Secrets Manager via Interface VPC Endpoints below.
 
   tags = { Name = "${var.name_prefix}-rt-private-${count.index + 1}" }
 }
@@ -93,6 +76,72 @@ resource "aws_route_table_association" "private" {
   count          = length(var.availability_zones)
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private[count.index].id
+}
+
+# ── Security Group for VPC Endpoints ──────────────────────────────────────────
+# Allows HTTPS (443) from within the VPC so pods can reach Interface Endpoints
+resource "aws_security_group" "vpc_endpoints" {
+  name        = "${var.name_prefix}-vpce-sg"
+  description = "Allow HTTPS from within the VPC to Interface Endpoints"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "HTTPS from VPC"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"] #tfsec:ignore:aws-ec2-no-public-egress-sgr
+  }
+
+  tags = { Name = "${var.name_prefix}-vpce-sg" }
+}
+
+# ── VPC Endpoints ─────────────────────────────────────────────────────────────
+# Interface Endpoints — private DNS so pods call the same SDK endpoints,
+# traffic stays on the AWS backbone and never reaches the public internet.
+
+locals {
+  interface_endpoints = [
+    "ecr.api",
+    "ecr.dkr",
+    "sns",
+    "sqs",
+    "secretsmanager",
+    "logs",         # CloudWatch Logs (EKS audit + Flow Logs)
+    "sts",          # IRSA token exchange
+  ]
+}
+
+resource "aws_vpc_endpoint" "interface" {
+  for_each = toset(local.interface_endpoints)
+
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.aws_region}.${each.key}"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = aws_subnet.private[*].id
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = { Name = "${var.name_prefix}-vpce-${each.key}" }
+}
+
+# S3 Gateway Endpoint — ECR uses S3 for image layer storage.
+# Gateway Endpoints are free and use route table entries instead of ENIs.
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = aws_route_table.private[*].id
+
+  tags = { Name = "${var.name_prefix}-vpce-s3" }
 }
 
 # ── VPC Flow Logs ─────────────────────────────────────────────────────────────

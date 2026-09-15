@@ -10,6 +10,7 @@ module "network" {
   availability_zones   = var.availability_zones
   public_subnet_cidrs  = var.public_subnet_cidrs
   private_subnet_cidrs = var.private_subnet_cidrs
+  aws_region           = var.aws_region
 }
 
 module "eks" {

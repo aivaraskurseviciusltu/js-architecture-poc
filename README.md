@@ -1,42 +1,13 @@
 # JS Fullstack Architecture PoC
 
-> **Badge evidence index** — a production-grade fullstack PoC demonstrating secure cloud orchestration,
-> event-driven scalability, fault tolerance, and documented technology decisions.
+> A production grade fullstack PoC demonstrating secure cloud orchestration,
+> event-driven scalability and fault tolerance.
 
 ---
 
 ## Architecture Diagram
 
-```mermaid
-flowchart TB
-  subgraph Browser
-    U[👤 User]
-  end
-
-  subgraph K8s Cluster / docker-compose
-    FE[Frontend\nReact + Vite\nnginx :8080]
-    BFF[BFF\nNestJS\n:3000]
-    OS[Order Service\nNestJS + Mongoose\n:3001]
-    IS[Inventory Service\nNestJS\n:3002 · KEDA]
-    NS[Notification Service\nNestJS\n:3003 · KEDA]
-    LS[LocalStack\nSNS + SQS\n:4566]
-    DB[(MongoDB 7)]
-    OTEL[OTel Collector\n+ Jaeger :16686]
-    PROM[Prometheus\n+ Grafana]
-  end
-
-  U -->|HTTPS| FE
-  FE -->|/api/*| BFF
-  BFF -->|JWT guard| OS
-  OS --> DB
-  OS -->|OrderCreated| LS
-  LS -->|inventory-queue| IS
-  LS -->|notification-queue| NS
-  IS --> DB
-  NS --> DB
-  BFF & OS -->|OTLP :4318| OTEL
-  BFF & OS & IS & NS -->|/metrics| PROM
-```
+![AWS Production Architecture](docs/aws-production-architecture.drawio.png)
 
 ---
 
