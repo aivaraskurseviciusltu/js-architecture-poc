@@ -1,20 +1,30 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# NOTE: This overlay is a documented placeholder for a production deployment.
-# Before applying, you must:
-#   1. Replace <AWS_ACCOUNT_ID> and <AWS_REGION> with real values.
-#   2. Create a real mongodb-secret pointing to MongoDB Atlas / DocumentDB.
-#   3. Update SNS/SQS ARNs to point to real AWS resources (remove LocalStack).
-#   4. Install cert-manager and issue a real TLS certificate.
-#   5. Configure imagePullSecrets for ECR authentication.
+# Production overlay for EKS + AWS.
+#
+# Prerequisites (run once before first apply):
+#   1. terraform apply -var-file=environments/prod/terraform.tfvars
+#      → note the irsa_role_arns output; substitute below.
+#   2. helm install external-secrets external-secrets/external-secrets \
+#        -n external-secrets --create-namespace
+#   3. helm install cert-manager jetstack/cert-manager \
+#        -n cert-manager --create-namespace --set crds.enabled=true
+#   4. aws secretsmanager create-secret \
+#        --name js-fullstack-poc-prod/bff/jwt \
+#        --secret-string '{"jwt_secret":"<openssl rand -hex 32>"}' \
+#        --region eu-north-1
 
 resources:
   - ../../base
+  # ESO manifests — ClusterSecretStore + ExternalSecrets for mongodb and bff
+  - ../../base/sealed-secrets/external-secret-prod.yaml
+  # cert-manager ClusterIssuer (Let's Encrypt)
+  - ../../base/cert-manager/cluster-issuer.yaml
 
-# Replace LocalStack with real AWS — remove localstack Deployment/Service/ConfigMap
-# by patching replicas to 0 (full removal requires strategic merge or component exclusion)
+# Remove local-only resources that must not run in production
 patches:
+  # Scale localstack to 0 — real SNS/SQS is used in prod
   - target:
       kind: Deployment
       name: localstack
@@ -23,8 +33,60 @@ patches:
         path: /spec/replicas
         value: 0
 
+  # Remove the plaintext mongodb/secret.yaml from the base — ESO owns mongodb-secret in prod
+  - target:
+      kind: Secret
+      name: mongodb-secret
+    patch: |
+      - op: replace
+        path: /metadata/annotations/kustomize.config.k8s.io~1managed-by
+        value: external-secrets
+
+  # Remove the bff placeholder Secret — ESO owns bff-secret in prod
+  - target:
+      kind: Secret
+      name: bff-secret
+    patch: |
+      - op: replace
+        path: /metadata/annotations/kustomize.config.k8s.io~1managed-by
+        value: external-secrets
+
+  # IRSA annotations — replace <ROLE_ARN_*> with values from `terraform output irsa_role_arns`
+  - target:
+      kind: ServiceAccount
+      name: order-service
+    patch: |
+      - op: add
+        path: /metadata/annotations
+        value:
+          eks.amazonaws.com/role-arn: <ROLE_ARN_ORDER_SERVICE>
+  - target:
+      kind: ServiceAccount
+      name: inventory-service
+    patch: |
+      - op: add
+        path: /metadata/annotations
+        value:
+          eks.amazonaws.com/role-arn: <ROLE_ARN_INVENTORY_SERVICE>
+  - target:
+      kind: ServiceAccount
+      name: notification-service
+    patch: |
+      - op: add
+        path: /metadata/annotations
+        value:
+          eks.amazonaws.com/role-arn: <ROLE_ARN_NOTIFICATION_SERVICE>
+  - target:
+      kind: ServiceAccount
+      name: bff
+    patch: |
+      - op: add
+        path: /metadata/annotations
+        value:
+          eks.amazonaws.com/role-arn: <ROLE_ARN_BFF>
+
 # Point all app images to ECR
-# Replace these with actual ECR URIs before deploying
+# Replace <AWS_ACCOUNT_ID> and <AWS_REGION> with real values (e.g. 123456789012, eu-north-1)
 images:
   - name: order-service
     newName: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/order-service

@@ -4,6 +4,17 @@ kind: Kustomization
 resources:
   - ../../base
 
+# Override the base bff/secret.yaml placeholder with a real dev value for local k3d.
+# behavior: merge replaces the base Secret of the same name instead of creating a second one.
+secretGenerator:
+  - name: bff-secret
+    namespace: poc
+    behavior: merge
+    literals:
+      - JWT_SECRET=dev-only-local-jwt-secret-change-for-prod
+    options:
+      disableNameSuffixHash: true
+
 # Pin all app images to locally-built :local tags
 images:
   - name: order-service

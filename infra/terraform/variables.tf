@@ -80,6 +80,14 @@ variable "eks_node_desired_size" {
   default     = 2
 }
 
+# ── Secrets ───────────────────────────────────────────────────────────────────
+
+variable "bff_secret_arn" {
+  description = "ARN of the Secrets Manager secret holding the BFF JWT signing key. Create with: aws secretsmanager create-secret --name js-fullstack-poc-prod/bff/jwt --secret-string '{\"jwt_secret\":\"...\"}' --region eu-north-1"
+  type        = string
+  sensitive   = true
+}
+
 # ── DocumentDB ───────────────────────────────────────────────────────────────
 
 variable "docdb_instance_class" {

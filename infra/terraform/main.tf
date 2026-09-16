@@ -65,6 +65,7 @@ module "iam" {
   inventory_queue_arn    = module.messaging.inventory_queue_arn
   notification_queue_arn = module.messaging.notification_queue_arn
   docdb_secret_arn       = module.mongodb.secret_arn
+  bff_secret_arn         = var.bff_secret_arn
 }
 
 module "ecr" {

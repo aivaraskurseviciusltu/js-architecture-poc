@@ -55,6 +55,16 @@ output "docdb_secret_arn" {
   value       = module.mongodb.secret_arn
 }
 
+output "irsa_role_arns" {
+  description = "IRSA role ARNs keyed by service name — use these as the eks.amazonaws.com/role-arn annotation in the prod overlay"
+  value = {
+    order_service        = module.iam.order_service_role_arn
+    inventory_service    = module.iam.inventory_service_role_arn
+    notification_service = module.iam.notification_service_role_arn
+    bff                  = module.iam.bff_role_arn
+  }
+}
+
 output "redis_endpoint" {
   description = "ElastiCache Redis primary endpoint"
   value       = module.elasticache.primary_endpoint

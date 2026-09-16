@@ -27,8 +27,10 @@ resources:
   - order-service/service.yaml
   - order-service/deployment.yaml
   - order-service/hpa.yaml
-  # BFF (configmap.yaml also contains the dev bff-secret)
+  # BFF
   - bff/configmap.yaml
+  # Dev-only placeholder Secret for local k3d. Production: ESO creates bff-secret from Secrets Manager.
+  - bff/secret.yaml
   - bff/service.yaml
   - bff/deployment.yaml
   - bff/hpa.yaml

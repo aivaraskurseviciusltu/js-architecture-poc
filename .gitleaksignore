@@ -1,0 +1,4 @@
+# Suppress the historical false-positive from commit 38f9272d6e44f76ced31a4b1b12002c0d4d196c7
+# where a dev-only JWT_SECRET placeholder was embedded in configmap.yaml.
+# That Secret has been moved to k8s/base/bff/secret.yaml with a non-secret placeholder value.
+38f9272d6e44f76ced31a4b1b12002c0d4d196c7:k8s/base/bff/configmap.yaml:kubernetes-secret-yaml:6

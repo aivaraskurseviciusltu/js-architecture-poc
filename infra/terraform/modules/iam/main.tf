@@ -8,7 +8,7 @@ data "aws_partition" "current" {}
 # ── Helper: IRSA assume-role policy ──────────────────────────────────────────
 # Creates a trust policy that allows a specific k8s service account to assume the role
 locals {
-  irsa_assume = { for sa in ["order-service", "inventory-service", "notification-service"] :
+  irsa_assume = { for sa in ["order-service", "inventory-service", "notification-service", "bff"] :
     sa => jsonencode({
       Version = "2012-10-17"
       Statement = [{
@@ -127,6 +127,34 @@ resource "aws_iam_role_policy" "notification_service" {
           "secretsmanager:DescribeSecret"
         ]
         Resource = [var.docdb_secret_arn]
+      }
+    ]
+  })
+}
+
+# ── BFF IRSA role ─────────────────────────────────────────────────────────────
+# BFF only needs to read its JWT signing key from Secrets Manager.
+# ESO assumes this role via the bff ServiceAccount's IRSA annotation.
+resource "aws_iam_role" "bff" {
+  name               = "${var.name_prefix}-bff-irsa"
+  assume_role_policy = local.irsa_assume["bff"]
+}
+
+resource "aws_iam_role_policy" "bff" {
+  name = "${var.name_prefix}-bff-policy"
+  role = aws_iam_role.bff.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ReadJwtSecret"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = [var.bff_secret_arn]
       }
     ]
   })

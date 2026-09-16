@@ -171,12 +171,15 @@ jobs:
       - name: Run Gitleaks
         run: gitleaks detect --source=. --verbose --redact
 
-      # Rebuild order-service image directly for scanning
+      # Rebuild order-service image directly for scanning.
+      # --load is required so the image lands in the local Docker daemon
+      # (docker buildx does not load by default).
       - name: Build order-service image for scanning
         run: |
-          docker build \
+          docker buildx build \
             -f apps/services/order-service/Dockerfile \
             -t order-service:${{ github.sha }} \
+            --load \
             .
 
       # Trivy — image vulnerability scan (fail on HIGH/CRITICAL)
