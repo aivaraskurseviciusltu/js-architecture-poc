@@ -208,11 +208,13 @@ jobs:
 
       - name: Upload SBOM
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882  # v4.4.3
         with:
           name: sbom
           path: sbom-*.spdx.json
           if-no-files-found: ignore
+          retention-days: 1
 
       # Terraform security scan
       # Local equivalent (no Docker needed): tfsec infra/terraform
