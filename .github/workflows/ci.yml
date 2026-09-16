@@ -162,28 +162,31 @@ jobs:
       - name: npm audit (production only)
         run: npm audit --audit-level=high --omit=dev
 
-      # gitleaks — secret scanning
-      - name: gitleaks
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7  # v2.3.9
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # gitleaks — secret scanning (standalone binary scan, avoids artifact upload exceeding billing quota)
+      - name: Install Gitleaks
+        run: |
+          GITLEAKS_VERSION="8.21.2"
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz -C /usr/local/bin gitleaks
 
-      # Rebuild order-service image directly into local docker daemon for scanning
+      - name: Run Gitleaks
+        run: gitleaks detect --source=. --verbose --redact
+
+      # Rebuild order-service image directly for scanning
       - name: Build order-service image for scanning
         run: |
           docker build \
             -f apps/services/order-service/Dockerfile \
-            -t ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/order-service:${{ github.sha }} \
+            -t order-service:${{ github.sha }} \
             .
 
       # Trivy — image vulnerability scan (fail on HIGH/CRITICAL)
       # Use table format for the blocking scan so exit-code works reliably,
-      # then run a second pass for SBOM. SARIF upload requires GitHub Code
-      # Scanning to be enabled; skip it to avoid failures on repos without it.
+      # then run a second pass for SBOM.
       - name: Trivy image scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/order-service:${{ github.sha }}
+          scan-type: image
+          image-ref: order-service:${{ github.sha }}
           format: table
           severity: HIGH,CRITICAL
           exit-code: '1'
@@ -194,7 +197,8 @@ jobs:
         if: always()
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/order-service:${{ github.sha }}
+          scan-type: image
+          image-ref: order-service:${{ github.sha }}
           format: spdx-json
           output: sbom-order-service.spdx.json
           exit-code: '0'
