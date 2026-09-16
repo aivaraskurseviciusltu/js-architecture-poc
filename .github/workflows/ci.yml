@@ -168,14 +168,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Rebuild order-service image for scanning — avoids downloading artifact from build job
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349  # v3.7.1
-
+      # Rebuild order-service image directly into local docker daemon for scanning
       - name: Build order-service image for scanning
         run: |
           docker build \
-            --load \
             -f apps/services/order-service/Dockerfile \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/order-service:${{ github.sha }} \
             .
